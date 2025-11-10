@@ -1,22 +1,26 @@
 # AI Learning Group Platform (study-p2p)
 
+> **Website học nhóm trực tuyến + AI tóm tắt chat**  
+> Clone 80% CSW.live – VKU DACS4
+
 ## Thành viên
-- Lê Thị Hoài Thương (23IT.B218)
-- Lê Nguyễn Quang Minh (23IT.B131)
+- **Lê Thị Hoài Thương** – 23IT.B218 – 23SE5  
+- **Lê Nguyễn Quang Minh** – 23IT.B131 – 23SE4  
 
 ## Mô tả
-Website học nhóm trực tuyến tích hợp AI tóm tắt chat (clone 80% CSW.live).
-- Video call P2P (WebRTC)
-- Chat real-time (Socket.IO)
-- AI Summarizer (Python + T5/BART)
+- Tạo/tham gia phòng học ảo  
+- Video call P2P (WebRTC)  
+- Chat nhóm real-time  
+- **AI tóm tắt chat tự động** (Python local)  
+-** Module AI (Hoài Thương) 
 
 ## Tech Stack
-- Frontend: React + Tailwind
-- Backend: Node.js + Express
-- AI: Python (HuggingFace)
-- DB: SQLite
+| Layer | Công nghệ |
+|------|----------|
+| Frontend | Flutter (Web/Mobile) |
+| Backend | **Java Maven + Tyrus WebSocket** |
+| Database | MySQL |
+| AI | Python (BART-pho) |
+| Real-time | WebRTC + Tyrus |
+| Deploy | Railway + Firebase |
 
-## Setup
-1. Clone repo: `git clone https://github.com/THUONGVIP09/study-p2p.git`
-2. Cài deps: `npm install` (cho client/server)
-3. Chạy: `npm run dev`
