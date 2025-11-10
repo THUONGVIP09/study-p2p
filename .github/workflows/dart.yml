@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: flutter_app/flutter_application_1   # thư mục chứa pubspec.yaml
+        working-directory: flutter-app/flutter_application_1   # thư mục chứa pubspec.yaml
     steps:
       - uses: actions/checkout@v4
       - uses: subosito/flutter-action@v2
