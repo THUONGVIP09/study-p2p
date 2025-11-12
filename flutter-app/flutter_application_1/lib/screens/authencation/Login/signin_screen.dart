@@ -7,7 +7,7 @@ class SignInScreen extends StatelessWidget {
   // TODO: thay bằng asset thật nếu bạn có
   static const String kLogoAsset = ''; // ví dụ: 'assets/images/logo.png'
   static const String kGoogleAsset =
-      'lib/images/logogg.png'; // ví dụ: 'assets/images/google.png'
+      'assets/images/logogg.png'; // ví dụ: 'assets/images/google.png'
 
   @override
   Widget build(BuildContext context) {

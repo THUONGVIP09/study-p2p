@@ -9,7 +9,7 @@ class SignUpPasswordScreen extends StatefulWidget {
       {super.key, required this.email, required this.displayName});
 
   // TODO: đổi sang ảnh nền của bạn
-  static const String kBackgroundAsset = 'lib/images/signup1.png';
+  static const String kBackgroundAsset = 'assets/images/signup1.png';
 
   @override
   State<SignUpPasswordScreen> createState() => _SignUpPasswordScreenState();

@@ -6,7 +6,7 @@ class SignUpInfoScreen extends StatelessWidget {
   const SignUpInfoScreen({super.key});
 
   // TODO: Thay đường dẫn ảnh nền theo project của bạn
-  static const String kBackgroundAsset = 'lib/images/signup1.png';
+  static const String kBackgroundAsset = 'assets/images/signup1.png';
 
   @override
   Widget build(BuildContext context) {
