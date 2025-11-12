@@ -24,3 +24,9 @@
 | Real-time | WebRTC + Tyrus |
 | Deploy | Railway + Firebase |
 
+
+cd "D:\D_A_T_A\Du_an\DACS4\study-p2p\flutter-app\flutter_application_1"
+flutter clean
+flutter pub get
+flutter run -d edge
+

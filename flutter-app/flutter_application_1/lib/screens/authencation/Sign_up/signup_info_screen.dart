@@ -1,5 +1,6 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter_application_1/screens/authencation/Sign_up/signup_password_screen.dart'; // THÊM IMPORT
 
 class SignUpInfoScreen extends StatelessWidget {
   const SignUpInfoScreen({super.key});
@@ -11,6 +12,9 @@ class SignUpInfoScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final size = MediaQuery.of(context).size;
+    final _displayNameController =
+        TextEditingController(); // THÊM (thay Fullname)
+    final _emailController = TextEditingController(); // THÊM
 
     return Scaffold(
       body: Stack(
@@ -65,8 +69,8 @@ class SignUpInfoScreen extends StatelessWidget {
                               child: CircleAvatar(
                                 radius: 18,
                                 backgroundColor: Colors.white.withOpacity(0.9),
-                                child:
-                                    const Icon(Icons.close, color: Colors.black, size: 18),
+                                child: const Icon(Icons.close,
+                                    color: Colors.black, size: 18),
                               ),
                             ),
                           ],
@@ -91,22 +95,32 @@ class SignUpInfoScreen extends StatelessWidget {
                         const SizedBox(height: 24),
 
                         // Các ô nhập thông tin
-                        const _RoundedField(hint: 'Fullname...'),
+                        _RoundedField(
+                            hint: 'Display Name...',
+                            controller:
+                                _displayNameController), // THAY Fullname
                         const SizedBox(height: 14),
-                        const _RoundedField(hint: 'Email...', keyboardType: TextInputType.emailAddress),
-                        const SizedBox(height: 14),
-                        const _RoundedField(hint: 'Phone...', keyboardType: TextInputType.phone),
-                        const SizedBox(height: 14),
-                        const _RoundedField(hint: 'Gender...'),
-                        const SizedBox(height: 24),
+                        _RoundedField(
+                            hint: 'Email...',
+                            keyboardType: TextInputType.emailAddress,
+                            controller: _emailController), // THÊM controller
+                        const SizedBox(height: 24), // Xóa Phone/Gender tạm
 
                         // Nút Next
                         SizedBox(
                           width: double.infinity,
                           child: ElevatedButton(
                             onPressed: () {
-                              Navigator.pushNamed(context, '/signup/password');
-                              /* TODO: next step */
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => SignUpPasswordScreen(
+                                    email: _emailController.text.trim(),
+                                    displayName:
+                                        _displayNameController.text.trim(),
+                                  ),
+                                ),
+                              );
                             },
                             style: ElevatedButton.styleFrom(
                               backgroundColor: Colors.black,
@@ -142,16 +156,19 @@ class _RoundedField extends StatelessWidget {
   final String hint;
   final bool obscure;
   final TextInputType? keyboardType;
+  final TextEditingController? controller; // THÊM
 
   const _RoundedField({
     required this.hint,
-    this.obscure = false,
     this.keyboardType,
+    this.obscure = false,
+    this.controller,
   });
 
   @override
   Widget build(BuildContext context) {
     return TextField(
+      controller: controller, // THÊM
       obscureText: obscure,
       keyboardType: keyboardType,
       style: const TextStyle(color: Colors.white),

@@ -10,7 +10,6 @@ class GetStartedScreen extends StatelessWidget {
   /// TODO: Thay bằng link ảnh minh hoạ của bạn.
   static const String kIllustrationUrl = 'lib/images/get1.png';
 
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -35,7 +34,8 @@ class GetStartedScreen extends StatelessWidget {
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 480),
               child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
@@ -63,22 +63,20 @@ class GetStartedScreen extends StatelessWidget {
                       ),
                     ),
 
-
-
-
-
                     const SizedBox(height: 12),
                     // Ảnh minh hoạ
                     AspectRatio(
-                      aspectRatio: 1, // vuông để cân bố cục; bạn có thể đổi nếu ảnh khác tỉ lệ
+                      aspectRatio:
+                          1, // vuông để cân bố cục; bạn có thể đổi nếu ảnh khác tỉ lệ
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(16),
                         child: Image.asset(
                           kIllustrationUrl,
                           fit: BoxFit.contain,
                           // Hiển thị placeholder đơn giản khi đang tải
-                         
-                          errorBuilder: (_, __, ___) => const Center(child: Icon(Icons.image_not_supported)),
+
+                          errorBuilder: (_, __, ___) => const Center(
+                              child: Icon(Icons.image_not_supported)),
                         ),
                       ),
                     ),
@@ -86,7 +84,6 @@ class GetStartedScreen extends StatelessWidget {
                     // const SizedBox(height: 28),
 
                     // Tiêu đề
-                    
 
                     const SizedBox(height: 36),
 

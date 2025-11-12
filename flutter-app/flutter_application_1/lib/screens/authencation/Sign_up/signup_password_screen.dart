@@ -1,8 +1,12 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter_application_1/services/api_service.dart'; // THÊM IMPORT
 
 class SignUpPasswordScreen extends StatefulWidget {
-  const SignUpPasswordScreen({super.key});
+  final String email; // THÊM
+  final String displayName; // THÊM
+  const SignUpPasswordScreen(
+      {super.key, required this.email, required this.displayName});
 
   // TODO: đổi sang ảnh nền của bạn
   static const String kBackgroundAsset = 'lib/images/signup1.png';
@@ -26,12 +30,22 @@ class _SignUpPasswordScreenState extends State<SignUpPasswordScreen> {
     super.dispose();
   }
 
-  void _submit() {
+  void _submit() async {
     if (_formKey.currentState?.validate() ?? false) {
-      // TODO: handle create account
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Account created!')),
-      );
+      try {
+        final result = await ApiService.register(
+          email: widget.email,
+          password: _pw.text.trim(),
+          displayName: widget.displayName,
+        );
+        // TODO: Auto login hoặc push signin
+        Navigator.pushReplacementNamed(context, '/signin');
+        ScaffoldMessenger.of(context)
+            .showSnackBar(const SnackBar(content: Text('Đăng ký OK!')));
+      } catch (e) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(e.toString())));
+      }
     }
   }
 
@@ -89,9 +103,10 @@ class _SignUpPasswordScreenState extends State<SignUpPasswordScreen> {
                                 borderRadius: BorderRadius.circular(20),
                                 child: CircleAvatar(
                                   radius: 18,
-                                  backgroundColor: Colors.white.withOpacity(0.9),
-                                  child:
-                                      const Icon(Icons.close, color: Colors.black, size: 18),
+                                  backgroundColor:
+                                      Colors.white.withOpacity(0.9),
+                                  child: const Icon(Icons.close,
+                                      color: Colors.black, size: 18),
                                 ),
                               ),
                             ],
@@ -120,7 +135,8 @@ class _SignUpPasswordScreenState extends State<SignUpPasswordScreen> {
                             controller: _pw,
                             hint: 'Password...',
                             obscure: _ob1,
-                            prefix: const Icon(Icons.lock_outline, size: 20, color: Colors.white),
+                            prefix: const Icon(Icons.lock_outline,
+                                size: 20, color: Colors.white),
                             suffix: IconButton(
                               onPressed: () => setState(() => _ob1 = !_ob1),
                               icon: Icon(
@@ -132,7 +148,8 @@ class _SignUpPasswordScreenState extends State<SignUpPasswordScreen> {
                             validator: (v) {
                               final val = v?.trim() ?? '';
                               if (val.isEmpty) return 'Please enter a password';
-                              if (val.length < 6) return 'At least 6 characters';
+                              if (val.length < 6)
+                                return 'At least 6 characters';
                               return null;
                             },
                           ),
@@ -143,7 +160,8 @@ class _SignUpPasswordScreenState extends State<SignUpPasswordScreen> {
                             controller: _pw2,
                             hint: 'Re-type password...',
                             obscure: _ob2,
-                            prefix: const Icon(Icons.lock_reset, size: 20, color: Colors.white),
+                            prefix: const Icon(Icons.lock_reset,
+                                size: 20, color: Colors.white),
                             suffix: IconButton(
                               onPressed: () => setState(() => _ob2 = !_ob2),
                               icon: Icon(
@@ -154,8 +172,10 @@ class _SignUpPasswordScreenState extends State<SignUpPasswordScreen> {
                             ),
                             validator: (v) {
                               final val = v?.trim() ?? '';
-                              if (val.isEmpty) return 'Please re-enter password';
-                              if (val != _pw.text.trim()) return 'Passwords do not match';
+                              if (val.isEmpty)
+                                return 'Please re-enter password';
+                              if (val != _pw.text.trim())
+                                return 'Passwords do not match';
                               return null;
                             },
                           ),
@@ -224,7 +244,8 @@ class _GlassField extends StatelessWidget {
         hintStyle: TextStyle(color: Colors.white.withOpacity(0.75)),
         filled: true,
         fillColor: Colors.white.withOpacity(0.25),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
         enabledBorder: _border(),
         focusedBorder: _border(),
         errorBorder: _border(),

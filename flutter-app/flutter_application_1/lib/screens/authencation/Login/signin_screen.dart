@@ -1,15 +1,19 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_application_1/services/api_service.dart'; // THÊM IMPORT
 
 class SignInScreen extends StatelessWidget {
   const SignInScreen({super.key});
 
   // TODO: thay bằng asset thật nếu bạn có
-  static const String kLogoAsset = '';        // ví dụ: 'assets/images/logo.png'
-  static const String kGoogleAsset = 'lib/images/logogg.png';      // ví dụ: 'assets/images/google.png'
+  static const String kLogoAsset = ''; // ví dụ: 'assets/images/logo.png'
+  static const String kGoogleAsset =
+      'lib/images/logogg.png'; // ví dụ: 'assets/images/google.png'
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final _emailController = TextEditingController(); // THÊM
+    final _passwordController = TextEditingController(); // THÊM
 
     return Scaffold(
       resizeToAvoidBottomInset: true,
@@ -50,9 +54,9 @@ class SignInScreen extends StatelessWidget {
                                 radius: 26,
                                 backgroundColor: Colors.white.withOpacity(.9),
                                 child: _maybeAsset(
-                                      kLogoAsset,
-                                      const Icon(Icons.local_mall_outlined),
-                                    ),
+                                  kLogoAsset,
+                                  const Icon(Icons.local_mall_outlined),
+                                ),
                               ),
                               InkWell(
                                 onTap: () => Navigator.maybePop(context),
@@ -88,13 +92,15 @@ class SignInScreen extends StatelessWidget {
                           _RoundedField(
                             hint: 'Email...',
                             keyboardType: TextInputType.emailAddress,
+                            controller: _emailController, // THÊM
                           ),
                           const SizedBox(height: 14),
 
                           // Password
-                          const _RoundedField(
+                          _RoundedField(
                             hint: 'Password...',
                             obscure: true,
+                            controller: _passwordController, // THÊM
                           ),
                           const SizedBox(height: 20),
 
@@ -102,7 +108,24 @@ class SignInScreen extends StatelessWidget {
                           SizedBox(
                             width: double.infinity,
                             child: ElevatedButton(
-                              onPressed: () {Navigator.pushNamed(context, '/signup'); /* TODO: handle sign in */},
+                              onPressed: () async {
+                                try {
+                                  final result = await ApiService.login(
+                                    email: _emailController.text.trim(),
+                                    password: _passwordController.text.trim(),
+                                  );
+                                  // TODO: Push màn home (danh sách phòng)
+                                  Navigator.pushReplacementNamed(
+                                      context, '/home');
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                          content: Text(
+                                              'Đăng nhập OK: ${result['user']['name']}')));
+                                } catch (e) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(content: Text(e.toString())));
+                                }
+                              },
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: Colors.black,
                                 foregroundColor: Colors.white,
@@ -124,8 +147,12 @@ class SignInScreen extends StatelessWidget {
                             child: TextButton.icon(
                               onPressed: () {/* TODO: sign in with Google */},
                               icon: SizedBox(
-                               
-                                child: Image.asset(kGoogleAsset, fit: BoxFit.contain,errorBuilder: (_, __, ___) => const Center(child: Icon(Icons.image_not_supported)),),
+                                child: Image.asset(
+                                  kGoogleAsset,
+                                  fit: BoxFit.contain,
+                                  errorBuilder: (_, __, ___) => const Center(
+                                      child: Icon(Icons.image_not_supported)),
+                                ),
                               ),
                               label: const Text(
                                 'Sign up with google',
@@ -163,10 +190,12 @@ class _RoundedField extends StatefulWidget {
   final String hint;
   final bool obscure;
   final TextInputType? keyboardType;
+  final TextEditingController? controller; // THÊM
   const _RoundedField({
     required this.hint,
     this.obscure = false,
     this.keyboardType,
+    this.controller,
   });
 
   @override
@@ -185,13 +214,15 @@ class _RoundedFieldState extends State<_RoundedField> {
   @override
   Widget build(BuildContext context) {
     return TextField(
+      controller: widget.controller, // THÊM
       obscureText: _obscure,
       keyboardType: widget.keyboardType,
       decoration: InputDecoration(
         hintText: widget.hint,
         filled: true,
         fillColor: Colors.white.withOpacity(.92),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
         enabledBorder: _border(),
         focusedBorder: _border(),
         prefixIcon: widget.obscure
@@ -200,7 +231,8 @@ class _RoundedFieldState extends State<_RoundedField> {
         suffixIcon: widget.obscure
             ? IconButton(
                 onPressed: () => setState(() => _obscure = !_obscure),
-                icon: Icon(_obscure ? Icons.visibility_off : Icons.visibility, size: 18),
+                icon: Icon(_obscure ? Icons.visibility_off : Icons.visibility,
+                    size: 18),
               )
             : null,
       ),
