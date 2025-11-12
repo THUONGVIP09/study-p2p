@@ -1,7 +1,6 @@
 # AI Learning Group Platform (study-p2p)
 
 > **Website học nhóm trực tuyến + AI tóm tắt chat**  
-> Clone 80% CSW.live – VKU DACS4
 
 ## Thành viên
 - **Lê Thị Hoài Thương** – 23IT.B218 – 23SE5  
