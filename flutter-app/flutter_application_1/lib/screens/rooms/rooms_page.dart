@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../services/api_service.dart';
 import '../../models/room.dart';
+import 'room_lobby_page.dart';
 
 class RoomsPage extends StatefulWidget {
   const RoomsPage({super.key});
@@ -66,12 +67,11 @@ class _RoomsPageState extends State<RoomsPage> {
                       leading: Icon(r.isGroup ? Icons.groups : Icons.person),
                       title: Text(r.title),
                       subtitle: Text('${r.roomCode} • ${r.visibility}'),
-                      onTap: () {
-                        // TODO: chuyển sang màn hình call/group-call sau
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('Chọn room: ${r.roomCode}')),
-                        );
-                      },
+                     onTap: () {
+  Navigator.of(context).push(MaterialPageRoute(
+    builder: (_) => RoomLobbyPage(roomCode: r.roomCode),
+  ));
+},
                     );
                   },
                 );
