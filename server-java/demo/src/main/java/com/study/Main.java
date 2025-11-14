@@ -6,10 +6,10 @@ import org.glassfish.jersey.server.ResourceConfig;
 import org.glassfish.jersey.jackson.JacksonFeature;
 import java.io.IOException;
 import java.net.URI;
+import org.glassfish.tyrus.server.Server;
 
 public class Main {
-    public static final String BASE_URI = "http://0.0.0.0:8080/";
-
+   
     public static void main(String[] args) throws IOException {
         final ResourceConfig rc = new ResourceConfig()
                 .packages("com.study")
@@ -21,8 +21,9 @@ public class Main {
                 ;
 
 
-        HttpServer server = GrizzlyHttpServerFactory.createHttpServer(URI.create(BASE_URI), rc);
-        System.out.println("Server chạy tại: " + BASE_URI);
+        HttpServer server = GrizzlyHttpServerFactory.createHttpServer(URI.create("http://0.0.0.0:8080/"), rc,true);
+        Server ws=new Server("")
+        System.out.println("Server chạy tại: " + "http://0.0.0.0:8080/");
         System.in.read();
         server.shutdownNow();
     }
