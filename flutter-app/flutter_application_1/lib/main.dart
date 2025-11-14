@@ -3,7 +3,8 @@ import 'package:flutter_application_1/screens/authencation/get_started_screen.da
 import 'package:flutter_application_1/screens/authencation/Login/signin_screen.dart';
 import 'package:flutter_application_1/screens/authencation/Sign_up/signup_info_screen.dart';
 import 'package:flutter_application_1/screens/authencation/Sign_up/signup_password_screen.dart';
-import 'screens/rooms/rooms_page.dart';
+import 'home_shell.dart';
+  
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
   runApp(const MyApp());
@@ -26,7 +27,7 @@ class MyApp extends StatelessWidget {
       // Các route bình thường (không cần hiệu ứng custom)
       routes: {
         '/home': (context) =>
-            const RoomsPage(), // THÊM tạm - sau thay room_list
+            const HomeShell(), // THÊM tạm - sau thay room_list
       },
 
       // Route có hiệu ứng chuyển mượt
