@@ -1,8 +1,13 @@
-com\study\CORSFilter.class
 com\study\UserInfo.class
-com\study\AuthController$UserRegister.class
+com\study\Db.class
 com\study\Main.class
 com\study\LoginResponse.class
-com\study\AuthController$UserLogin.class
 com\study\ResponseMessage.class
+com\study\CORSFilter.class
+com\study\AuthController$UserRegister.class
+com\study\SignalingEndpoint.class
+com\study\RoomsController$Room.class
+com\study\AuthController$UserLogin.class
+com\study\RoomsController.class
+com\study\SignalingEndpoint$ClientCtx.class
 com\study\AuthController.class

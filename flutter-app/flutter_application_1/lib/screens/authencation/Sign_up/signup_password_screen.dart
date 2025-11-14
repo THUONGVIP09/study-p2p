@@ -1,15 +1,14 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
-import 'package:flutter_application_1/services/api_service.dart'; // THÊM IMPORT
+import 'package:flutter_application_1/services/api_service.dart';
 
 class SignUpPasswordScreen extends StatefulWidget {
-  final String email; // THÊM
-  final String displayName; // THÊM
+  final String email;
+  final String displayName;
   const SignUpPasswordScreen(
       {super.key, required this.email, required this.displayName});
 
-  // TODO: đổi sang ảnh nền của bạn
-  static const String kBackgroundAsset = 'assets/images/signup1.png';
+  static const String kBackgroundAsset = 'lib/images/signup1.png';
 
   @override
   State<SignUpPasswordScreen> createState() => _SignUpPasswordScreenState();
@@ -19,7 +18,7 @@ class _SignUpPasswordScreenState extends State<SignUpPasswordScreen> {
   final _formKey = GlobalKey<FormState>();
   final _pw = TextEditingController();
   final _pw2 = TextEditingController();
-
+  bool _isLoading = false;
   bool _ob1 = true;
   bool _ob2 = true;
 
@@ -31,20 +30,22 @@ class _SignUpPasswordScreenState extends State<SignUpPasswordScreen> {
   }
 
   void _submit() async {
-    if (_formKey.currentState?.validate() ?? false) {
+    if (_formKey.currentState!.validate()) {
+      setState(() => _isLoading = true);
       try {
-        final result = await ApiService.register(
+        await ApiService.register(
           email: widget.email,
           password: _pw.text.trim(),
           displayName: widget.displayName,
         );
-        // TODO: Auto login hoặc push signin
         Navigator.pushReplacementNamed(context, '/signin');
         ScaffoldMessenger.of(context)
             .showSnackBar(const SnackBar(content: Text('Đăng ký OK!')));
       } catch (e) {
         ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text(e.toString())));
+            .showSnackBar(SnackBar(content: Text('Lỗi: $e')));
+      } finally {
+        setState(() => _isLoading = false);
       }
     }
   }
@@ -58,13 +59,8 @@ class _SignUpPasswordScreenState extends State<SignUpPasswordScreen> {
       body: Stack(
         fit: StackFit.expand,
         children: [
-          // Ảnh nền
           Image.asset(SignUpPasswordScreen.kBackgroundAsset, fit: BoxFit.cover),
-
-          // Lớp tối nhẹ để chữ rõ hơn
           Container(color: Colors.black.withOpacity(0.35)),
-
-          // Card kính mờ
           Center(
             child: SingleChildScrollView(
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
@@ -79,16 +75,13 @@ class _SignUpPasswordScreenState extends State<SignUpPasswordScreen> {
                       color: Colors.white.withOpacity(0.15),
                       borderRadius: BorderRadius.circular(32),
                       border: Border.all(
-                        color: Colors.white.withOpacity(0.25),
-                        width: 1.5,
-                      ),
+                          color: Colors.white.withOpacity(0.25), width: 1.5),
                     ),
                     child: Form(
                       key: _formKey,
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // Logo + Close
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
@@ -112,25 +105,20 @@ class _SignUpPasswordScreenState extends State<SignUpPasswordScreen> {
                             ],
                           ),
                           const SizedBox(height: 24),
-
                           Text(
                             'MaroMart',
                             style: theme.textTheme.headlineSmall?.copyWith(
-                              fontWeight: FontWeight.w800,
-                              color: Colors.white,
-                            ),
+                                fontWeight: FontWeight.w800,
+                                color: Colors.white),
                           ),
                           const SizedBox(height: 8),
                           Text(
                             'MaroMart, the easy way for people to buy, sell, and connect with each other.',
                             style: theme.textTheme.bodyMedium?.copyWith(
-                              color: Colors.white.withOpacity(0.85),
-                              height: 1.5,
-                            ),
+                                color: Colors.white.withOpacity(0.85),
+                                height: 1.5),
                           ),
                           const SizedBox(height: 20),
-
-                          // Password
                           _GlassField(
                             controller: _pw,
                             hint: 'Password...',
@@ -140,22 +128,20 @@ class _SignUpPasswordScreenState extends State<SignUpPasswordScreen> {
                             suffix: IconButton(
                               onPressed: () => setState(() => _ob1 = !_ob1),
                               icon: Icon(
-                                _ob1 ? Icons.visibility_off : Icons.visibility,
-                                size: 18,
-                                color: Colors.white,
-                              ),
+                                  _ob1
+                                      ? Icons.visibility_off
+                                      : Icons.visibility,
+                                  size: 18,
+                                  color: Colors.white),
                             ),
                             validator: (v) {
                               final val = v?.trim() ?? '';
-                              if (val.isEmpty) return 'Please enter a password';
-                              if (val.length < 6)
-                                return 'At least 6 characters';
+                              if (val.isEmpty) return 'Không để trống password';
+                              if (val.length < 6) return 'Ít nhất 6 ký tự';
                               return null;
                             },
                           ),
                           const SizedBox(height: 14),
-
-                          // Re-type password
                           _GlassField(
                             controller: _pw2,
                             hint: 'Re-type password...',
@@ -165,39 +151,39 @@ class _SignUpPasswordScreenState extends State<SignUpPasswordScreen> {
                             suffix: IconButton(
                               onPressed: () => setState(() => _ob2 = !_ob2),
                               icon: Icon(
-                                _ob2 ? Icons.visibility_off : Icons.visibility,
-                                size: 18,
-                                color: Colors.white,
-                              ),
+                                  _ob2
+                                      ? Icons.visibility_off
+                                      : Icons.visibility,
+                                  size: 18,
+                                  color: Colors.white),
                             ),
                             validator: (v) {
                               final val = v?.trim() ?? '';
-                              if (val.isEmpty)
-                                return 'Please re-enter password';
+                              if (val.isEmpty) return 'Không để trống re-type';
                               if (val != _pw.text.trim())
-                                return 'Passwords do not match';
+                                return 'Password không khớp';
                               return null;
                             },
                           ),
                           const SizedBox(height: 24),
-
-                          // Button Create
                           SizedBox(
                             width: double.infinity,
                             child: ElevatedButton(
-                              onPressed: _submit,
+                              onPressed: _isLoading ? null : _submit,
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: Colors.black,
                                 foregroundColor: Colors.white,
                                 elevation: 0,
                                 shape: const StadiumBorder(),
                                 minimumSize: const Size(double.infinity, 56),
-                                textStyle: const TextStyle(
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 16,
-                                ),
                               ),
-                              child: const Text('Create'),
+                              child: _isLoading
+                                  ? const SizedBox(
+                                      width: 20,
+                                      height: 20,
+                                      child: CircularProgressIndicator(
+                                          strokeWidth: 2, color: Colors.white))
+                                  : const Text('Create'),
                             ),
                           ),
                         ],
@@ -214,7 +200,6 @@ class _SignUpPasswordScreenState extends State<SignUpPasswordScreen> {
   }
 }
 
-// TextField kiểu kính mờ, bo tròn
 class _GlassField extends StatelessWidget {
   final String hint;
   final bool obscure;
@@ -248,14 +233,15 @@ class _GlassField extends StatelessWidget {
             const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
         enabledBorder: _border(),
         focusedBorder: _border(),
-        errorBorder: _border(),
-        focusedErrorBorder: _border(),
+        errorBorder:
+            _border().copyWith(borderSide: const BorderSide(color: Colors.red)),
+        focusedErrorBorder:
+            _border().copyWith(borderSide: const BorderSide(color: Colors.red)),
         prefixIcon: prefix == null
             ? null
             : Padding(
                 padding: const EdgeInsetsDirectional.only(start: 12, end: 6),
-                child: prefix,
-              ),
+                child: prefix),
         prefixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
         suffixIcon: suffix,
       ),
@@ -263,7 +249,5 @@ class _GlassField extends StatelessWidget {
   }
 
   OutlineInputBorder _border() => OutlineInputBorder(
-        borderRadius: BorderRadius.circular(28),
-        borderSide: BorderSide.none,
-      );
+      borderRadius: BorderRadius.circular(28), borderSide: BorderSide.none);
 }
