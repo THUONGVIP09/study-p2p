@@ -47,6 +47,13 @@
             <version>10.0.0</version>
             <scope>provided</scope>
         </dependency>
+         <!-- Jakarta WebSocket API -->
+  <dependency>
+    <groupId>jakarta.websocket</groupId>
+    <artifactId>jakarta.websocket-api</artifactId>
+    <version>2.1.1</version>
+    <scope>provided</scope>
+  </dependency>
 
         <!-- MySQL JDBC -->
         <dependency>
@@ -68,8 +75,14 @@
             <artifactId>slf4j-simple</artifactId>
             <version>2.0.13</version>
         </dependency>
+        <!-- GSON -->
+        <dependency>    
+            <groupId>com.google.code.gson</groupId>
+            <artifactId>gson</artifactId>
+            <version>2.10.1</version>   
+        </dependency>   
     </dependencies>
-
+   
     <build>
         <plugins>
             <!-- Maven Shade Plugin: tạo fat JAR -->

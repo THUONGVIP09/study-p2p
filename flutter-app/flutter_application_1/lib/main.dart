@@ -3,7 +3,7 @@ import 'package:flutter_application_1/screens/authencation/get_started_screen.da
 import 'package:flutter_application_1/screens/authencation/Login/signin_screen.dart';
 import 'package:flutter_application_1/screens/authencation/Sign_up/signup_info_screen.dart';
 import 'package:flutter_application_1/screens/authencation/Sign_up/signup_password_screen.dart';
-
+import 'screens/rooms/rooms_page.dart';
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
   runApp(const MyApp());
@@ -15,7 +15,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'MaroMart',
+      title: 'Study P2P',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
@@ -26,7 +26,7 @@ class MyApp extends StatelessWidget {
       // Các route bình thường (không cần hiệu ứng custom)
       routes: {
         '/home': (context) =>
-            const HomeScreen(), // THÊM tạm - sau thay room_list
+            const RoomsPage(), // THÊM tạm - sau thay room_list
       },
 
       // Route có hiệu ứng chuyển mượt
@@ -77,14 +77,4 @@ Route _smoothRoute(Widget page, RouteSettings settings) {
 }
 
 // Tạm cho /home - sau thay bằng room_list_screen.dart
-class HomeScreen extends StatelessWidget {
-  const HomeScreen({super.key});
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Home - Danh sách phòng')),
-      body: const Center(child: Text('Chào mừng! Đây là màn home tạm.')),
-    );
-  }
-}

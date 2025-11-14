@@ -8,7 +8,7 @@ class GetStartedScreen extends StatelessWidget {
   const GetStartedScreen({super.key});
 
   /// TODO: Thay bằng link ảnh minh hoạ của bạn.
-  static const String kIllustrationUrl = 'lib/images/get1.png';
+  static const String kIllustrationUrl = 'assets/images/get1.png';
 
   @override
   Widget build(BuildContext context) {

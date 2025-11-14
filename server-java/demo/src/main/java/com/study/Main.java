@@ -14,7 +14,12 @@ public class Main {
         final ResourceConfig rc = new ResourceConfig()
                 .packages("com.study")
                 .register(JacksonFeature.class) // JSON
-                .register(CORSFilter.class);    // CORS
+                .register(CORSFilter.class)    // CORS
+                .register(Db.class)         // Database
+                .register(AuthController.class) // Auth
+                .register(RoomsController.class)// Rooms
+                ;
+
 
         HttpServer server = GrizzlyHttpServerFactory.createHttpServer(URI.create(BASE_URI), rc);
         System.out.println("Server chạy tại: " + BASE_URI);
