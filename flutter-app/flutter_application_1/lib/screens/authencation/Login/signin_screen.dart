@@ -2,26 +2,22 @@ import 'package:flutter/material.dart';
 import 'package:flutter_application_1/services/api_service.dart'; // Giữ import
 
 class SignInScreen extends StatefulWidget {
-  // THAY Stateless thành Stateful
   const SignInScreen({super.key});
 
   static const String kLogoAsset = ''; // ví dụ: 'assets/images/logo.png'
-  static const String kGoogleAsset = 'lib/images/logogg.png';
 
   @override
-  State<SignInScreen> createState() => _SignInScreenState(); // THÊM
+  State<SignInScreen> createState() => _SignInScreenState();
 }
 
 class _SignInScreenState extends State<SignInScreen> {
-  // THÊM STATE
-  final _formKey = GlobalKey<FormState>(); // THÊM cho validate
+  final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-  bool _isLoading = false; // THÊM cho loading button
+  bool _isLoading = false;
 
   @override
   void dispose() {
-    // THÊM dispose
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
@@ -58,7 +54,6 @@ class _SignInScreenState extends State<SignInScreen> {
                     child: SingleChildScrollView(
                       padding: const EdgeInsets.fromLTRB(24, 24, 24, 24),
                       child: Form(
-                        // THÊM Form
                         key: _formKey,
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -88,7 +83,7 @@ class _SignInScreenState extends State<SignInScreen> {
                             ),
                             const SizedBox(height: 20),
                             Text(
-                              'MaroMart', // Sau thay 'Study P2P'
+                              'MaroMart',
                               style: theme.textTheme.headlineSmall?.copyWith(
                                   fontWeight: FontWeight.w800,
                                   color: Colors.black),
@@ -105,7 +100,6 @@ class _SignInScreenState extends State<SignInScreen> {
                               keyboardType: TextInputType.emailAddress,
                               controller: _emailController,
                               validator: (v) {
-                                // THÊM validator
                                 final val = v?.trim() ?? '';
                                 if (val.isEmpty) return 'Không để trống email';
                                 if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$')
@@ -120,7 +114,6 @@ class _SignInScreenState extends State<SignInScreen> {
                               obscure: true,
                               controller: _passwordController,
                               validator: (v) {
-                                // THÊM validator
                                 final val = v?.trim() ?? '';
                                 if (val.isEmpty)
                                   return 'Không để trống password';
@@ -135,11 +128,8 @@ class _SignInScreenState extends State<SignInScreen> {
                                 onPressed: _isLoading
                                     ? null
                                     : () async {
-                                        // Disable nếu loading
                                         if (_formKey.currentState!.validate()) {
-                                          // Check valid trước call
-                                          setState(() => _isLoading =
-                                              true); // Bắt đầu loading
+                                          setState(() => _isLoading = true);
                                           try {
                                             final result =
                                                 await ApiService.login(
@@ -153,8 +143,9 @@ class _SignInScreenState extends State<SignInScreen> {
                                             ScaffoldMessenger.of(context)
                                                 .showSnackBar(
                                               SnackBar(
-                                                  content: Text(
-                                                      'Đăng nhập OK: ${result['user']['name']}')),
+                                                content: Text(
+                                                    'Đăng nhập OK: ${result['user']['name']}'),
+                                              ),
                                             );
                                           } catch (e) {
                                             ScaffoldMessenger.of(context)
@@ -163,8 +154,7 @@ class _SignInScreenState extends State<SignInScreen> {
                                                   content: Text('Lỗi: $e')),
                                             );
                                           } finally {
-                                            setState(() => _isLoading =
-                                                false); // Kết thúc loading
+                                            setState(() => _isLoading = false);
                                           }
                                         }
                                       },
@@ -184,33 +174,13 @@ class _SignInScreenState extends State<SignInScreen> {
                                         height: 20,
                                         child: CircularProgressIndicator(
                                             strokeWidth: 2,
-                                            color: Colors
-                                                .white)) // Spinner loading
+                                            color: Colors.white),
+                                      )
                                     : const Text('Sign in'),
                               ),
                             ),
                             const SizedBox(height: 28),
-                            Center(
-                              child: TextButton.icon(
-                                onPressed: () {/* TODO: sign in with Google */},
-                                icon: SizedBox(
-                                  child: Image.asset(
-                                    SignInScreen.kGoogleAsset,
-                                    fit: BoxFit.contain,
-                                    errorBuilder: (_, __, ___) => const Center(
-                                        child: Icon(Icons.image_not_supported)),
-                                  ),
-                                ),
-                                label: const Text(
-                                  'Sign up with google',
-                                  style: TextStyle(
-                                      color: Colors.black,
-                                      fontWeight: FontWeight.w600),
-                                ),
-                                style: TextButton.styleFrom(
-                                    foregroundColor: Colors.black),
-                              ),
-                            ),
+                            // Phần Google Sign up đã bị loại bỏ
                           ],
                         ),
                       ),
@@ -236,7 +206,7 @@ class _RoundedField extends StatefulWidget {
   final bool obscure;
   final TextInputType? keyboardType;
   final TextEditingController? controller;
-  final String? Function(String?)? validator; // THÊM cho validate
+  final String? Function(String?)? validator;
 
   const _RoundedField({
     required this.hint,
@@ -262,11 +232,10 @@ class _RoundedFieldState extends State<_RoundedField> {
   @override
   Widget build(BuildContext context) {
     return TextFormField(
-      // THAY TextField thành TextFormField cho validate
       controller: widget.controller,
       obscureText: _obscure,
       keyboardType: widget.keyboardType,
-      validator: widget.validator, // THÊM
+      validator: widget.validator,
       decoration: InputDecoration(
         hintText: widget.hint,
         filled: true,
@@ -275,9 +244,8 @@ class _RoundedFieldState extends State<_RoundedField> {
             const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
         enabledBorder: _border(),
         focusedBorder: _border(),
-        errorBorder: _border().copyWith(
-            borderSide:
-                const BorderSide(color: Colors.red)), // THÊM error style
+        errorBorder:
+            _border().copyWith(borderSide: const BorderSide(color: Colors.red)),
         focusedErrorBorder:
             _border().copyWith(borderSide: const BorderSide(color: Colors.red)),
         prefixIcon: widget.obscure
