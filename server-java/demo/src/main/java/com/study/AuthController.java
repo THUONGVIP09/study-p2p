@@ -16,9 +16,7 @@ record UserInfo(long id, String name) {}
 @Consumes(MediaType.APPLICATION_JSON)
 public class AuthController {
 
-    private static final String DB_URL = "jdbc:mysql://localhost:3306/study_p2p";
-    private static final String DB_USER = "root";
-    private static final String DB_PASS = ""; // Đổi pass thật ngay!
+    
 
     // --- REGISTER ---
     @POST
@@ -43,7 +41,7 @@ public class AuthController {
         }
 
         String sql = "INSERT INTO users (email, password_hash, display_name) VALUES (?, ?, ?)";
-        try (Connection conn = DriverManager.getConnection(DB_URL, DB_USER, DB_PASS);
+        try (Connection conn = Db.get();
              PreparedStatement ps = conn.prepareStatement(sql)) {
 
             String hashed = BCrypt.hashpw(user.password, BCrypt.gensalt());
@@ -76,7 +74,7 @@ public class AuthController {
         }
 
         String sql = "SELECT id, password_hash, display_name FROM users WHERE email = ?";
-        try (Connection conn = DriverManager.getConnection(DB_URL, DB_USER, DB_PASS);
+        try (Connection conn = Db.get();
              PreparedStatement ps = conn.prepareStatement(sql)) {
 
             ps.setString(1, user.email.trim());

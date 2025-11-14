@@ -12,10 +12,6 @@ import java.util.concurrent.*;
 @ServerEndpoint(value = "/ws")
 public class SignalingEndpoint {
 
-  // DB — bám theo studi.sql (study_p2p)
-  private static final String DB_URL  = "jdbc:mysql://localhost:3306/study_p2p";
-  private static final String DB_USER = "root";
-  private static final String DB_PASS = " "; // chỉnh theo máy bạn
 
   private static final Gson GSON = new Gson();
 
@@ -59,7 +55,7 @@ public class SignalingEndpoint {
   }
 
   private static boolean roomExists(long roomId) {
-    try (Connection cn = DriverManager.getConnection(DB_URL, DB_USER, DB_PASS);
+    try (Connection cn = Db.get();
          PreparedStatement st = cn.prepareStatement("SELECT 1 FROM rooms WHERE id=? LIMIT 1")) {
       st.setLong(1, roomId);
       try (ResultSet rs = st.executeQuery()) { return rs.next(); }
