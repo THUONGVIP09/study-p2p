@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_application_1/screens/rooms/rooms_page.dart';
+
+
 
 class HomeShell extends StatefulWidget {
   const HomeShell({super.key});
@@ -69,16 +72,22 @@ class _HomeShellState extends State<HomeShell> {
 
           // Khu vực nội dung trắng (placeholder)
           Expanded(
-            child: Container(
-              color: Colors.white,
-              child: Center(
-                child: Text(
-                  tabs[index].label,
-                  style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w600),
-                ),
-              ),
-            ),
-          ),
+  child: IndexedStack(
+    index: index,
+    children: [
+      const RoomsPage(),        
+      const _PlaceholderPage('Whiteboard'),      // Tab 1
+      const _PlaceholderPage('Calendar'),        // Tab 2
+      const _PlaceholderPage('Notes'),           // Tab 3
+      const _PlaceholderPage('Members'),         // Tab 4
+      const _PlaceholderPage('Chat'),            // Tab 5
+      const _PlaceholderPage('Tools'),           // Tab 6
+      const _PlaceholderPage('Flags'),                    // <-- Tab 0: Call = RoomsPage
+                // Tab 7
+    ],
+  ),
+),
+
         ],
       ),
     );
@@ -97,5 +106,18 @@ class _DisabledIcon extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Icon(icon, color: Colors.white38, size: 26);
+  }
+}
+class _PlaceholderPage extends StatelessWidget {
+  final String title;
+  const _PlaceholderPage(this.title, {super.key});
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.white,
+      body: Center(
+        child: Text(title, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w600)),
+      ),
+    );
   }
 }

@@ -1,10 +1,11 @@
-package com.study;
+package com.study.room;
 
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.*;
 import java.sql.*;
 import java.util.*;
 import com.google.gson.Gson;
+import com.study.Db;
 
 @Path("/api/rooms")
 @Produces(MediaType.APPLICATION_JSON)

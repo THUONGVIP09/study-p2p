@@ -4,9 +4,9 @@ import 'package:flutter/foundation.dart'
     show kIsWeb, defaultTargetPlatform, TargetPlatform;
 
 String wsBase() {
-  if (kIsWeb) return 'ws://127.0.0.1:8080/ws';
-  if (defaultTargetPlatform == TargetPlatform.android) return 'ws://10.0.2.2:8080/ws'; // emulator
-  return 'ws://127.0.0.1:8080/ws'; // desktop/iOS sim
+  if (kIsWeb) return 'ws://127.0.0.1:8081/ws';
+  if (defaultTargetPlatform == TargetPlatform.android) return 'ws://10.0.2.2:8081/ws'; // emulator
+  return 'ws://127.0.0.1:8081/ws'; // desktop/iOS sim
 }
 
 class SignalingService {
@@ -15,6 +15,9 @@ class SignalingService {
   final peers = <String, String>{}; // uid -> name
   bool joined = false;
   String status = 'idle'; // idle | connecting | joined | closed | error:...
+  void Function(String from, Map<String,dynamic> sdp)? onOffer;
+  void Function(String from, Map<String,dynamic> sdp)? onAnswer;
+  void Function(String from, Map<String,dynamic> cand)? onIce;
 
   void Function()? onChanged; // gọi setState ở UI
 
@@ -56,6 +59,10 @@ class SignalingService {
           peers.remove(m['uid']);
           onChanged?.call();
           break;
+        case 'offer':  onOffer?.call(m['from'] ?? '', Map<String,dynamic>.from(m['sdp'])); break;
+        case 'answer': onAnswer?.call(m['from'] ?? '', Map<String,dynamic>.from(m['sdp'])); break;
+        case 'ice':    onIce?.call(m['from'] ?? '', Map<String,dynamic>.from(m['candidate'])); break;
+
         default:
           // offer/answer/ice sẽ xử ở bước sau
           break;
@@ -81,4 +88,14 @@ class SignalingService {
     peers.clear();
     onChanged?.call();
   }
+  void sendOffer(String to, Map<String, dynamic> sdp, String from) {
+  _ch?.sink.add(jsonEncode({'t':'offer','to':to,'from':from,'sdp':sdp}));
+}
+void sendAnswer(String to, Map<String, dynamic> sdp, String from) {
+  _ch?.sink.add(jsonEncode({'t':'answer','to':to,'from':from,'sdp':sdp}));
+}
+void sendIce(String to, Map<String, dynamic> cand, String from) {
+  _ch?.sink.add(jsonEncode({'t':'ice','to':to,'from':from,'candidate':cand}));
+}
+
 }
