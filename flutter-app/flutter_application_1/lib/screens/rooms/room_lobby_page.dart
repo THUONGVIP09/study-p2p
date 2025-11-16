@@ -72,7 +72,8 @@ class _RoomLobbyPageState extends State<RoomLobbyPage> {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.black12, borderRadius: BorderRadius.circular(8),
+                color: Colors.black12,
+                borderRadius: BorderRadius.circular(8),
               ),
               child: Text('Status: ${sig.status}  •  Me: $myUid',
                   style: const TextStyle(fontSize: 12)),
@@ -85,11 +86,13 @@ class _RoomLobbyPageState extends State<RoomLobbyPage> {
               const Text('Chưa có ai khác trong phòng. Bạn đã join rồi nha.'),
             Expanded(
               child: ListView(
-                children: sig.peers.entries.map((e) => ListTile(
-                  leading: const Icon(Icons.person),
-                  title: Text(e.value),
-                  subtitle: Text(e.key),
-                )).toList(),
+                children: sig.peers.entries
+                    .map((e) => ListTile(
+                          leading: const Icon(Icons.person),
+                          title: Text(e.value),
+                          subtitle: Text(e.key),
+                        ))
+                    .toList(),
               ),
             ),
           ],
