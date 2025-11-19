@@ -8,9 +8,6 @@ import java.io.IOException;
 import java.net.URI;
 import org.glassfish.tyrus.server.Server; // giờ sẽ nhận ra class
 
-import com.study.room.RoomsController;
-
-
 
 public class Main {
    
@@ -21,8 +18,7 @@ public class Main {
                 .register(CORSFilter.class)    // CORS
                 .register(Db.class)         // Database
                 .register(AuthController.class) // Auth
-                .register(RoomsController.class)// Rooms
-                ;
+                  ;
 
 
         HttpServer server = GrizzlyHttpServerFactory.createHttpServer(URI.create("http://0.0.0.0:8080/"), rc,true);
@@ -33,4 +29,5 @@ public class Main {
 
     Thread.currentThread().join();
     }
+
 }

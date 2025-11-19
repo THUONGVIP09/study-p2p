@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_application_1/screens/rooms/rooms_page.dart';
-
+import 'call_page.dart';
 
 
 class HomeShell extends StatefulWidget {
@@ -75,7 +74,7 @@ class _HomeShellState extends State<HomeShell> {
   child: IndexedStack(
     index: index,
     children: [
-      const RoomsPage(),        
+      const CallPage(),        
       const _PlaceholderPage('Whiteboard'),      // Tab 1
       const _PlaceholderPage('Calendar'),        // Tab 2
       const _PlaceholderPage('Notes'),           // Tab 3

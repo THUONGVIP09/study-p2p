@@ -8,6 +8,7 @@ import 'home_shell.dart';
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
   runApp(const MyApp());
+  
 }
 
 class MyApp extends StatelessWidget {
