@@ -74,7 +74,7 @@ class _HomeShellState extends State<HomeShell> {
   child: IndexedStack(
     index: index,
     children: [
-      const CallPage(),        
+      const GroupCallPage(),        
       const _PlaceholderPage('Whiteboard'),      // Tab 1
       const _PlaceholderPage('Calendar'),        // Tab 2
       const _PlaceholderPage('Notes'),           // Tab 3
