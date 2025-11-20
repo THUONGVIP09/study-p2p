@@ -107,3 +107,18 @@ class _DisabledIcon extends StatelessWidget {
     return Icon(icon, color: Colors.white38, size: 26);
   }
 }
+
+class _PlaceholderPage extends StatelessWidget {
+  final String title;
+  const _PlaceholderPage(this.title, {super.key});
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.white,
+      body: Center(
+        child: Text(title,
+            style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w600)),
+      ),
+    );
+  }
+}
