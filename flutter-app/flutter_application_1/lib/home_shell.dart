@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-import 'screens/friends/friends_screen.dart';
-import 'screens/chats/chats_screen.dart';
+import 'package:flutter_application_1/screens/rooms/rooms_page.dart';
+import 'package:flutter_application_1/screens/friends/friends_screen.dart';
+import 'call_page.dart';
 
 class HomeShell extends StatefulWidget {
   const HomeShell({super.key});
@@ -12,6 +13,7 @@ class HomeShell extends StatefulWidget {
 class _HomeShellState extends State<HomeShell> {
   int index = 0;
 
+  // Danh sách tab (icon gần giống ảnh)
   final tabs = <_TabItem>[
     _TabItem(icon: Icons.videocam_off_rounded, label: 'Call'),
     _TabItem(icon: Icons.brush_rounded, label: 'Whiteboard'),
@@ -23,31 +25,12 @@ class _HomeShellState extends State<HomeShell> {
     _TabItem(icon: Icons.flag_rounded, label: 'Flags'),
   ];
 
+  // Ba nút mờ phía dưới (chưa active)
   final trailing = const [
     _DisabledIcon(icon: Icons.music_note_rounded),
     _DisabledIcon(icon: Icons.notifications_rounded),
     _DisabledIcon(icon: Icons.account_circle_rounded),
   ];
-
-  // Map index của tab sang màn hình thực tế
-  Widget _buildContent() {
-    switch (index) {
-      case 4: // Members
-        return const FriendsScreen();
-      case 5: // Chat
-        return const ChatsScreen();
-      default:
-        return Container(
-          color: Colors.white,
-          child: Center(
-            child: Text(
-              tabs[index].label,
-              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w600),
-            ),
-          ),
-        );
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -59,9 +42,10 @@ class _HomeShellState extends State<HomeShell> {
             onDestinationSelected: (i) => setState(() => index = i),
             labelType: NavigationRailLabelType.none,
             minWidth: 72,
-            backgroundColor: const Color(0xFF1E1B1D),
+            backgroundColor: const Color(0xFF1E1B1D), // nền tối giống ảnh
             selectedIconTheme: const IconThemeData(color: Color(0xFFE68AF7)),
             unselectedIconTheme: const IconThemeData(color: Colors.white),
+
             leading: const SizedBox(height: 8),
             destinations: [
               for (final t in tabs)
@@ -71,6 +55,8 @@ class _HomeShellState extends State<HomeShell> {
                   label: Text(t.label),
                 ),
             ],
+
+            // nhóm các icon mờ ở đáy
             trailing: Column(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
@@ -85,8 +71,22 @@ class _HomeShellState extends State<HomeShell> {
             ),
           ),
 
-          // Nội dung bên phải
-          Expanded(child: _buildContent()),
+          // Khu vực nội dung trắng (placeholder)
+          Expanded(
+            child: IndexedStack(
+              index: index,
+              children: [
+                const RoomsPage(),
+                const _PlaceholderPage('Whiteboard'), // Tab 1
+                const _PlaceholderPage('Calendar'), // Tab 2
+                const _PlaceholderPage('Notes'), // Tab 3
+                const FriendsScreen(), // Tab 4: Members
+                const _PlaceholderPage('Chat'), // Tab 5
+                const _PlaceholderPage('Tools'), // Tab 6
+                const _PlaceholderPage('Flags'), // Tab 7
+              ],
+            ),
+          ),
         ],
       ),
     );

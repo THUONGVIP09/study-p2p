@@ -13,7 +13,7 @@ public final class Db {
   private static final String USER = System.getProperty("DB_USER",
       System.getenv().getOrDefault("DB_USER", "root"));
   private static final String PASS = System.getProperty("DB_PASS",
-      System.getenv().getOrDefault("DB_PASS", "password"));
+      System.getenv().getOrDefault("DB_PASS", "thuongle0910"));
 
   private Db() {}
 
@@ -41,4 +41,6 @@ public final class Db {
   public static void closeQuietly(AutoCloseable c) {
     if (c != null) try { c.close(); } catch (Exception ignore) {}
   }
+
+ 
 }
