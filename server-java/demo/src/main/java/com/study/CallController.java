@@ -102,6 +102,8 @@ public class CallController {
             }
 
             // map lại để trả cho client (live_count mặc định 0)
+            String nowStr = LocalDateTime.now().toString();
+
             CallSessionDto dto = new CallSessionDto(
                     callId,
                     req.roomId(),
@@ -109,7 +111,7 @@ public class CallController {
                     topology,
                     sfuRegion,
                     sfuRoomId,
-                    LocalDateTime.now(),
+                    nowStr,
                     null,
                     0);
 
@@ -287,18 +289,15 @@ public class CallController {
         String sfuRoomId = rs.getString("sfu_room_id");
         Timestamp started = rs.getTimestamp("started_at");
         Timestamp ended = rs.getTimestamp("ended_at");
+
+        String startedStr = started != null ? started.toLocalDateTime().toString() : null;
+        String endedStr = ended != null ? ended.toLocalDateTime().toString() : null;
+
         Integer live = (Integer) rs.getObject("live_count");
 
         return new CallSessionDto(
-                id,
-                roomId,
-                createdBy,
-                topology,
-                region,
-                sfuRoomId,
-                started != null ? started.toLocalDateTime() : null,
-                ended != null ? ended.toLocalDateTime() : null,
-                live);
+                id, roomId, createdBy, topology, region, sfuRoomId,
+                startedStr, endedStr, live);
     }
 
     private Response bad(String msg) {

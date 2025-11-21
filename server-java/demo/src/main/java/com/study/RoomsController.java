@@ -98,6 +98,7 @@ public class RoomsController {
             con.commit();
 
             String roomCode = encodeRoomCode(roomId);
+            String createdAtStr = LocalDateTime.now().toString();
 
             RoomDto dto = new RoomDto(
                     roomId,
@@ -109,7 +110,7 @@ public class RoomsController {
                     maxP,
                     createdBy,
                     true,
-                    LocalDateTime.now());
+                    createdAtStr);
 
             return Response.ok(new ApiResponse<>(true, "Tạo phòng thành công", dto)).build();
 
@@ -147,6 +148,9 @@ public class RoomsController {
                 long createdBy = rs.getLong("created_by");
                 boolean isActive = rs.getBoolean("is_active");
                 Timestamp createdAt = rs.getTimestamp("created_at");
+                String createdAtStr = createdAt != null
+                        ? createdAt.toLocalDateTime().toString()
+                        : null;
 
                 String roomCode = encodeRoomCode(id);
 
@@ -160,9 +164,8 @@ public class RoomsController {
                         maxP,
                         createdBy,
                         isActive,
-                        createdAt != null ? createdAt.toLocalDateTime() : null));
+                        createdAtStr));
             }
-
             return Response.ok(new ApiResponse<>(true, "OK", list)).build();
 
         } catch (SQLException e) {
