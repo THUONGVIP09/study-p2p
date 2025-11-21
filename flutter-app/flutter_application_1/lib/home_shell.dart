@@ -1,12 +1,7 @@
 import 'package:flutter/material.dart';
-<<<<<<< HEAD
 import 'package:flutter_application_1/screens/rooms/rooms_page.dart';
 import 'call_page.dart';
 
-=======
-import 'screens/friends/friends_screen.dart';
-import 'screens/chats/chats_screen.dart';
->>>>>>> 7ac8777fd020344b0a477af1903d0cad34d05c23
 
 class HomeShell extends StatefulWidget {
   const HomeShell({super.key});
@@ -18,42 +13,24 @@ class HomeShell extends StatefulWidget {
 class _HomeShellState extends State<HomeShell> {
   int index = 0;
 
+  // Danh sách tab (icon gần giống ảnh)
   final tabs = <_TabItem>[
     _TabItem(icon: Icons.videocam_off_rounded, label: 'Call'),
-    _TabItem(icon: Icons.brush_rounded, label: 'Whiteboard'),
-    _TabItem(icon: Icons.event_rounded, label: 'Calendar'),
-    _TabItem(icon: Icons.description_rounded, label: 'Notes'),
-    _TabItem(icon: Icons.group_rounded, label: 'Members'),
-    _TabItem(icon: Icons.chat_bubble_rounded, label: 'Chat'),
-    _TabItem(icon: Icons.format_color_fill, label: 'Tools'),
-    _TabItem(icon: Icons.flag_rounded, label: 'Flags'),
+    _TabItem(icon: Icons.brush_rounded,        label: 'Whiteboard'),
+    _TabItem(icon: Icons.event_rounded,        label: 'Calendar'),
+    _TabItem(icon: Icons.description_rounded,  label: 'Notes'),
+    _TabItem(icon: Icons.group_rounded,        label: 'Members'),
+    _TabItem(icon: Icons.chat_bubble_rounded,  label: 'Chat'),
+    _TabItem(icon: Icons.format_color_fill,    label: 'Tools'),
+    _TabItem(icon: Icons.flag_rounded,         label: 'Flags'),
   ];
 
+  // Ba nút mờ phía dưới (chưa active)
   final trailing = const [
     _DisabledIcon(icon: Icons.music_note_rounded),
     _DisabledIcon(icon: Icons.notifications_rounded),
     _DisabledIcon(icon: Icons.account_circle_rounded),
   ];
-
-  // Map index của tab sang màn hình thực tế
-  Widget _buildContent() {
-    switch (index) {
-      case 4: // Members
-        return const FriendsScreen();
-      case 5: // Chat
-        return const ChatsScreen();
-      default:
-        return Container(
-          color: Colors.white,
-          child: Center(
-            child: Text(
-              tabs[index].label,
-              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w600),
-            ),
-          ),
-        );
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -65,9 +42,10 @@ class _HomeShellState extends State<HomeShell> {
             onDestinationSelected: (i) => setState(() => index = i),
             labelType: NavigationRailLabelType.none,
             minWidth: 72,
-            backgroundColor: const Color(0xFF1E1B1D),
+            backgroundColor: const Color(0xFF1E1B1D), // nền tối giống ảnh
             selectedIconTheme: const IconThemeData(color: Color(0xFFE68AF7)),
             unselectedIconTheme: const IconThemeData(color: Colors.white),
+
             leading: const SizedBox(height: 8),
             destinations: [
               for (final t in tabs)
@@ -77,22 +55,39 @@ class _HomeShellState extends State<HomeShell> {
                   label: Text(t.label),
                 ),
             ],
+
+            // nhóm các icon mờ ở đáy
             trailing: Column(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
                 const SizedBox(height: 16),
-                for (final w in trailing)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 10),
-                    child: w,
-                  ),
+                for (final w in trailing) Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                  child: w,
+                ),
                 const SizedBox(height: 16),
               ],
             ),
           ),
 
-          // Nội dung bên phải
-          Expanded(child: _buildContent()),
+          // Khu vực nội dung trắng (placeholder)
+          Expanded(
+  child: IndexedStack(
+    index: index,
+    children: [
+      const RoomsPage(),        
+      const _PlaceholderPage('Whiteboard'),      // Tab 1
+      const _PlaceholderPage('Calendar'),        // Tab 2
+      const _PlaceholderPage('Notes'),           // Tab 3
+      const _PlaceholderPage('Members'),         // Tab 4
+      const _PlaceholderPage('Chat'),            // Tab 5
+      const _PlaceholderPage('Tools'),           // Tab 6
+      const _PlaceholderPage('Flags'),                    // <-- Tab 0: Call = RoomsPage
+                // Tab 7
+    ],
+  ),
+),
+
         ],
       ),
     );
@@ -113,7 +108,6 @@ class _DisabledIcon extends StatelessWidget {
     return Icon(icon, color: Colors.white38, size: 26);
   }
 }
-
 class _PlaceholderPage extends StatelessWidget {
   final String title;
   const _PlaceholderPage(this.title, {super.key});
@@ -122,8 +116,7 @@ class _PlaceholderPage extends StatelessWidget {
     return Scaffold(
       backgroundColor: Colors.white,
       body: Center(
-        child: Text(title,
-            style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w600)),
+        child: Text(title, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w600)),
       ),
     );
   }
