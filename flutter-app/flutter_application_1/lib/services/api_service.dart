@@ -1,12 +1,18 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+
 import '../models/room.dart';
+
 class ApiService {
- static const String baseUrl = String.fromEnvironment(
+  /// Đổi bằng tham số --dart-define=API_BASE=... khi build nếu cần
+  static const String baseUrl = String.fromEnvironment(
     'API_BASE',
     defaultValue: 'http://127.0.0.1:8080',
   );
+
+  // ================= AUTH =================
+
   // Đăng ký
   static Future<Map<String, dynamic>> register({
     required String email,
@@ -24,10 +30,10 @@ class ApiService {
     );
 
     if (response.statusCode == 201) {
-      return jsonDecode(response.body);
+      return jsonDecode(response.body) as Map<String, dynamic>;
     } else {
-      throw Exception(
-          jsonDecode(response.body)['message'] ?? 'Đăng ký thất bại');
+      final body = _safeJson(response.body);
+      throw Exception(body['message'] ?? 'Đăng ký thất bại');
     }
   }
 
@@ -45,36 +51,147 @@ class ApiService {
       }),
     );
 
+    final body = _safeJson(response.body);
+
     if (response.statusCode == 200) {
-      final data = jsonDecode(response.body);
-      // Lưu token
+      // backend trả: { success, token, user: { id, name, ... } }
       final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('token', data['token']);
-      return data;
+      if (body['token'] != null) {
+        await prefs.setString('token', body['token'] as String);
+      }
+      if (body['user']?['id'] != null) {
+        await prefs.setInt('userId', body['user']['id'] as int);
+      }
+      return body;
     } else {
-      throw Exception(
-          jsonDecode(response.body)['message'] ?? 'Đăng nhập thất bại');
+      throw Exception(body['message'] ?? 'Đăng nhập thất bại');
     }
   }
 
-  // Lấy token cho API sau
+  // ================= COMMON =================
+
   static Future<String?> getToken() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getString('token');
   }
-    Future<List<Room>> fetchRooms({String q = '', int limit = 50, int offset = 0}) async {
-    final uri = Uri.parse('$baseUrl/api/rooms')
-        .replace(queryParameters: {
-          if (q.isNotEmpty) 'q': q,
-          'limit': '$limit',
-          'offset': '$offset',
-        });
-    final res = await http.get(uri);
-    if (res.statusCode != 200) {
-      throw Exception('Fetch rooms failed: ${res.statusCode} ${res.body}');
+
+  static Future<int?> getUserId() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getInt('userId');
+  }
+
+  static Map<String, dynamic> _safeJson(String body) {
+    try {
+      final decoded = jsonDecode(body);
+      return decoded is Map<String, dynamic> ? decoded : <String, dynamic>{};
+    } catch (_) {
+      return <String, dynamic>{};
     }
-    final payload = json.decode(res.body) as Map<String, dynamic>;
-    final list = (payload['data'] as List).cast<Map<String, dynamic>>();
-    return list.map((e) => Room.fromJson(e)).toList();
+  }
+
+  static Future<Map<String, String>> _authHeaders() async {
+    final token = await getToken();
+    final headers = <String, String>{
+      'Content-Type': 'application/json; charset=utf-8',
+    };
+    if (token != null && token.isNotEmpty) {
+      headers['Authorization'] = 'Bearer $token';
+    }
+    return headers;
+  }
+
+  // ================= ROOMS =================
+
+  /// Lấy danh sách phòng mà user đang tham gia
+  /// map với GET /api/rooms?userId=...
+  static Future<List<Room>> fetchRooms({int? userId}) async {
+    final uid = userId ?? await getUserId();
+    if (uid == null) {
+      throw Exception('Chưa có userId – hãy đăng nhập trước');
+    }
+
+    final headers = await _authHeaders();
+    final uri = Uri.parse('$baseUrl/api/rooms')
+        .replace(queryParameters: {'userId': '$uid'});
+
+    final res = await http.get(uri, headers: headers);
+    final payload = _safeJson(utf8.decode(res.bodyBytes));
+
+    if (res.statusCode != 200 || payload['success'] != true) {
+      throw Exception(payload['message'] ?? 'Lấy danh sách phòng thất bại');
+    }
+
+    final List<dynamic> data = payload['data'] ?? [];
+    return data
+        .map((e) => Room.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  /// Tạo phòng mới – POST /api/rooms
+  static Future<Room> createRoom({
+    required String name,
+    String? description,
+    String visibility = 'PUBLIC',
+    String? passcode,
+    int? maxParticipants,
+    int? createdBy,
+  }) async {
+    final uid = createdBy ?? await getUserId();
+    if (uid == null) {
+      throw Exception('Chưa có userId – hãy đăng nhập trước');
+    }
+
+    final headers = await _authHeaders();
+    final uri = Uri.parse('$baseUrl/api/rooms');
+
+    final body = {
+      'name': name,
+      'description': description,
+      'visibility': visibility,
+      'passcode': passcode,
+      'maxParticipants': maxParticipants,
+      'createdBy': uid,
+    };
+
+    final res =
+        await http.post(uri, headers: headers, body: jsonEncode(body));
+    final payload = _safeJson(utf8.decode(res.bodyBytes));
+
+    if (res.statusCode < 200 || res.statusCode >= 300 || payload['success'] != true) {
+      throw Exception(payload['message'] ?? 'Tạo phòng thất bại');
+    }
+
+    return Room.fromJson(payload['data'] as Map<String, dynamic>);
+  }
+
+  /// Join phòng bằng roomCode – POST /api/rooms/join
+  static Future<Room> joinRoomByCode({
+    required String roomCode,
+    String? passcode,
+    int? userId,
+  }) async {
+    final uid = userId ?? await getUserId();
+    if (uid == null) {
+      throw Exception('Chưa có userId – hãy đăng nhập trước');
+    }
+
+    final headers = await _authHeaders();
+    final uri = Uri.parse('$baseUrl/api/rooms/join');
+
+    final body = {
+      'roomCode': roomCode,
+      'userId': uid,
+      'passcode': passcode,
+    };
+
+    final res =
+        await http.post(uri, headers: headers, body: jsonEncode(body));
+    final payload = _safeJson(utf8.decode(res.bodyBytes));
+
+    if (res.statusCode < 200 || res.statusCode >= 300 || payload['success'] != true) {
+      throw Exception(payload['message'] ?? 'Join phòng thất bại');
+    }
+
+    return Room.fromJson(payload['data'] as Map<String, dynamic>);
   }
 }

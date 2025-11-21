@@ -1,61 +1,42 @@
 class Room {
   final int id;
+  final int conversationId;
+  final String name;
   final String roomCode;
-  final String title;
-  final String description;
-  final String visibility;
-  final bool isGroup;
+  final String? description;
+  final String visibility; // PUBLIC/PRIVATE/PROTECTED
+  final int? maxParticipants;
+  final int createdBy;
+  final bool isActive;
+  final DateTime? createdAt;
 
   Room({
     required this.id,
+    required this.conversationId,
+    required this.name,
     required this.roomCode,
-    required this.title,
-    required this.description,
+    this.description,
     required this.visibility,
-    required this.isGroup,
+    this.maxParticipants,
+    required this.createdBy,
+    required this.isActive,
+    this.createdAt,
   });
 
-  factory Room.fromJson(Map<String, dynamic> j) {
-    // id: số hoặc chuỗi đều ok
-    final int id = (j['id'] is String)
-        ? int.parse(j['id'])
-        : (j['id'] as num).toInt();
-
-    // room_code: ưu tiên room_code/code/roomCode, nếu trống thì sinh từ id
-    String code = (j['room_code'] ?? j['code'] ?? j['roomCode'] ?? '').toString();
-    if (code.isEmpty) {
-      code = 'ROOM-${id.toString().padLeft(4, '0')}';
-    }
-
-    // title: ưu tiên title, fallback name
-    final String title = (j['title'] ?? j['name'] ?? '').toString();
-
-    // description/visibility: fallback mặc định
-    final String description = (j['description'] ?? '').toString();
-    final String visibility =
-        (j['visibility'] ?? 'public').toString().toLowerCase();
-
-    // is_group: nhận bool | số | string, fallback từ max_participants (>2 coi như group)
-    final dynamic ig = j['is_group'] ?? j['isGroup'] ?? j['group'];
-    bool isGroup;
-    if (ig is bool) {
-      isGroup = ig;
-    } else if (ig is num) {
-      isGroup = ig.toInt() == 1;
-    } else if (ig is String) {
-      isGroup = ig == '1' || ig.toLowerCase() == 'true';
-    } else {
-      final mp = j['max_participants'];
-      isGroup = (mp is num) ? mp.toInt() > 2 : true;
-    }
-
+  factory Room.fromJson(Map<String, dynamic> json) {
     return Room(
-      id: id,
-      roomCode: code,
-      title: title,
-      description: description,
-      visibility: visibility,
-      isGroup: isGroup,
+      id: json['id'] as int,
+      conversationId: json['conversationId'] as int,
+      name: json['name'] as String,
+      roomCode: json['roomCode'] as String,
+      description: json['description'],
+      visibility: json['visibility'] as String,
+      maxParticipants: json['maxParticipants'],
+      createdBy: json['createdBy'] as int,
+      isActive: json['isActive'] as bool,
+      createdAt: json['createdAt'] != null
+          ? DateTime.parse(json['createdAt'] as String)
+          : null,
     );
   }
 }
