@@ -65,14 +65,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.0.8"
-  dart_webrtc:
-    dependency: transitive
-    description:
-      name: dart_webrtc
-      sha256: "51bcda4ba5d7dd9e65a309244ce3ac0b58025e6e1f6d7442cee4cd02134ef65f"
-      url: "https://pub.dev"
-    source: hosted
-    version: "1.6.0"
   fake_async:
     dependency: transitive
     description:
@@ -120,6 +112,7 @@ packages:
     description: flutter
     source: sdk
     version: "0.0.0"
+<<<<<<< HEAD
   flutter_webrtc:
     dependency: "direct main"
     description:
@@ -128,6 +121,8 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.2.1"
+=======
+>>>>>>> 108dbfc4e00a1938aef5e3fc9ca98cad6e84ad55
   http:
     dependency: "direct main"
     description:
@@ -208,6 +203,7 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "5.1.1"
+<<<<<<< HEAD
   logger:
     dependency: transitive
     description:
@@ -224,6 +220,8 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.3.0"
+=======
+>>>>>>> 108dbfc4e00a1938aef5e3fc9ca98cad6e84ad55
   matcher:
     dependency: transitive
     description:
@@ -264,6 +262,7 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.9.1"
+<<<<<<< HEAD
   path_provider:
     dependency: transitive
     description:
@@ -288,6 +287,8 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.5.0"
+=======
+>>>>>>> 108dbfc4e00a1938aef5e3fc9ca98cad6e84ad55
   path_provider_linux:
     dependency: transitive
     description:
@@ -477,14 +478,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.4.1"
-  synchronized:
-    dependency: transitive
-    description:
-      name: synchronized
-      sha256: c254ade258ec8282947a0acbbc90b9575b4f19673533ee46f2f6e9b3aeefd7c0
-      url: "https://pub.dev"
-    source: hosted
-    version: "3.4.0"
   term_glyph:
     dependency: transitive
     description:
@@ -549,14 +542,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "3.0.3"
-  webrtc_interface:
-    dependency: transitive
-    description:
-      name: webrtc_interface
-      sha256: "2e604a31703ad26781782fb14fa8a4ee621154ee2c513d2b9938e486fa695233"
-      url: "https://pub.dev"
-    source: hosted
-    version: "1.3.0"
   xdg_directories:
     dependency: transitive
     description:

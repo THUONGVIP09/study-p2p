@@ -17,7 +17,10 @@ dependencies:
   web_socket_channel: ^3.0.3
   agora_rtc_engine: ^6.2.0   # hoặc version mới nhất trên pub.dev
   permission_handler: ^11.0.0
+<<<<<<< HEAD
   flutter_webrtc: ^1.2.1
+=======
+>>>>>>> 108dbfc4e00a1938aef5e3fc9ca98cad6e84ad55
 
 dev_dependencies:
   flutter_test:
