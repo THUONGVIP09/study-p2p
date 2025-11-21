@@ -5,9 +5,8 @@ class RoomService {
   const RoomService();
 
   /// GET /api/rooms?userId=...
-  Future<List<Room>> getRoomsForUser(int userId) {
-    // ApiService đã lo baseUrl + token luôn
-    return ApiService.fetchRooms(userId: userId);
+  Future<List<Room>> getAllRooms() {
+    return ApiService.fetchRooms();
   }
 
   /// POST /api/rooms

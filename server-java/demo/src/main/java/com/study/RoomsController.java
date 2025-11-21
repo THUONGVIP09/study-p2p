@@ -8,9 +8,9 @@ import java.sql.*;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+
 import com.study.dto.RoomDto;
 import com.study.dto.CreateRoomRequest;
-import com.study.dto.JoinRoomRequest;
 import com.study.dto.ApiResponse;
 
 @Path("/api/rooms")
@@ -18,7 +18,7 @@ import com.study.dto.ApiResponse;
 @Consumes(MediaType.APPLICATION_JSON)
 public class RoomsController {
 
-    // Tạo phòng mới
+    // ========= TẠO PHÒNG =========
     @POST
     public Response createRoom(CreateRoomRequest req) {
         if (req == null || req.name() == null || req.name().isBlank()) {
@@ -35,7 +35,7 @@ public class RoomsController {
                 ? 12
                 : req.maxParticipants();
 
-        try (Connection con = Db.get()) {
+        try (Connection con = Db.get()) { // Db.get() phải trả về Connection
             con.setAutoCommit(false);
 
             // 1) tạo conversation
@@ -119,10 +119,10 @@ public class RoomsController {
         }
     }
 
+    // ========= LẤY TẤT CẢ PHÒNG =========
     @GET
     public Response listRooms(@QueryParam("userId") Long userId) {
-        // userId bây giờ chỉ để… tham khảo, không dùng filter nữa
-
+        // userId bây giờ không dùng, chỉ để tương thích với client
         String sql = """
                 SELECT r.id, r.conversation_id, r.name, r.description,
                        r.visibility, r.passcode, r.max_participants,
@@ -148,7 +148,7 @@ public class RoomsController {
                 boolean isActive = rs.getBoolean("is_active");
                 Timestamp createdAt = rs.getTimestamp("created_at");
 
-                String roomCode = encodeRoomCode(id); // giữ hàm encode như cũ
+                String roomCode = encodeRoomCode(id);
 
                 list.add(new RoomDto(
                         id,
@@ -167,13 +167,11 @@ public class RoomsController {
 
         } catch (SQLException e) {
             e.printStackTrace();
-            return Response.serverError()
-                    .entity(new ApiResponse<>(false, "Lỗi DB: " + e.getMessage(), null))
-                    .build();
+            return server("Lỗi DB: " + e.getMessage());
         }
     }
 
-    // ===== Helpers =====
+    // ========= Helpers =========
 
     private String normalizeVisibility(String vis) {
         if (vis == null || vis.isBlank())
@@ -190,14 +188,6 @@ public class RoomsController {
         return "R" + String.format("%06d", roomId);
     }
 
-    private long decodeRoomId(String roomCode) {
-        if (roomCode == null || roomCode.length() < 2 || !roomCode.startsWith("R")) {
-            throw new IllegalArgumentException("Invalid room code");
-        }
-        String num = roomCode.substring(1);
-        return Long.parseLong(num);
-    }
-
     private Response bad(String msg) {
         return Response.status(Response.Status.BAD_REQUEST)
                 .entity(new ApiResponse<>(false, msg, null))
@@ -208,15 +198,5 @@ public class RoomsController {
         return Response.serverError()
                 .entity(new ApiResponse<>(false, msg, null))
                 .build();
-    }
-
-    // Request model for creating a room
-    public static record CreateRoomRequest(
-            String name,
-            Long createdBy,
-            String visibility,
-            Integer maxParticipants,
-            String description,
-            String passcode) {
     }
 }

@@ -28,30 +28,24 @@ class _RoomsPageState extends State<RoomsPage> {
   }
 
   Future<void> _loadRooms() async {
-    try {
-      final uid = await ApiService.getUserId();
-      if (uid == null) {
-        setState(() {
-          _loading = false;
-        });
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Chưa đăng nhập')),
-        );
-        return;
-      }
-      final rooms = await _roomService.getRoomsForUser(uid);
-      setState(() {
-        _userId = uid;
-        _rooms = rooms;
-        _loading = false;
-      });
-    } catch (e) {
-      setState(() => _loading = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Lỗi load rooms: $e')),
-      );
-    }
+  try {
+    setState(() => _loading = true);
+
+    // gọi thẳng, không cần userId nữa
+    final rooms = await _roomService.getAllRooms();
+
+    setState(() {
+      _rooms = rooms;
+      _loading = false;
+    });
+  } catch (e) {
+    setState(() => _loading = false);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Lỗi load rooms: $e')),
+    );
   }
+}
+
 
   Future<void> _joinCall(Room room) async {
     if (_userId == null) {

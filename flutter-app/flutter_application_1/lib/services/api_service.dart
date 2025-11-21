@@ -104,28 +104,28 @@ class ApiService {
 
   /// Lấy danh sách phòng mà user đang tham gia
   /// map với GET /api/rooms?userId=...
-  static Future<List<Room>> fetchRooms({int? userId}) async {
-    final uid = userId ?? await getUserId();
-    if (uid == null) {
-      throw Exception('Chưa có userId – hãy đăng nhập trước');
-    }
+  static Future<List<Room>> fetchRooms() async {
+  final headers = await _authHeaders();
+  final uri = Uri.parse('$baseUrl/api/rooms');
 
-    final headers = await _authHeaders();
-    final uri = Uri.parse('$baseUrl/api/rooms')
-        .replace(queryParameters: {'userId': '$uid'});
+  final res = await http.get(uri, headers: headers);
+  final rawBody = utf8.decode(res.bodyBytes);
 
-    final res = await http.get(uri, headers: headers);
-    final payload = _safeJson(utf8.decode(res.bodyBytes));
+  // log cho chắc, mở console lên coi
+  print('GET /api/rooms status=${res.statusCode} body=$rawBody');
 
-    if (res.statusCode != 200 || payload['success'] != true) {
-      throw Exception(payload['message'] ?? 'Lấy danh sách phòng thất bại');
-    }
+  final payload = _safeJson(rawBody);
 
-    final List<dynamic> data = payload['data'] ?? [];
-    return data
-        .map((e) => Room.fromJson(e as Map<String, dynamic>))
-        .toList();
+  if (res.statusCode != 200 || payload['success'] != true) {
+    throw Exception(payload['message'] ?? 'Lấy danh sách phòng thất bại');
   }
+
+  final List<dynamic> data = payload['data'] ?? [];
+  return data
+      .map((e) => Room.fromJson(e as Map<String, dynamic>))
+      .toList();
+}
+
 
   /// Tạo phòng mới – POST /api/rooms
   static Future<Room> createRoom({
