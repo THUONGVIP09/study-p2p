@@ -1,7 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_application_1/screens/rooms/rooms_page.dart';
+<<<<<<< HEAD
+import 'package:flutter_application_1/screens/friends/friends_screen.dart';
+import 'call_page.dart';
+=======
 import 'call_page.dart';
 
+>>>>>>> 108dbfc4e00a1938aef5e3fc9ca98cad6e84ad55
 
 class HomeShell extends StatefulWidget {
   const HomeShell({super.key});
@@ -72,6 +77,22 @@ class _HomeShellState extends State<HomeShell> {
 
           // Khu vực nội dung trắng (placeholder)
           Expanded(
+<<<<<<< HEAD
+            child: IndexedStack(
+              index: index,
+              children: [
+                const RoomsPage(),
+                const _PlaceholderPage('Whiteboard'), // Tab 1
+                const _PlaceholderPage('Calendar'), // Tab 2
+                const _PlaceholderPage('Notes'), // Tab 3
+                const FriendsScreen(), // Tab 4: Members
+                const _PlaceholderPage('Chat'), // Tab 5
+                const _PlaceholderPage('Tools'), // Tab 6
+                const _PlaceholderPage('Flags'), // Tab 7
+              ],
+            ),
+          ),
+=======
   child: IndexedStack(
     index: index,
     children: [
@@ -88,6 +109,7 @@ class _HomeShellState extends State<HomeShell> {
   ),
 ),
 
+>>>>>>> 108dbfc4e00a1938aef5e3fc9ca98cad6e84ad55
         ],
       ),
     );

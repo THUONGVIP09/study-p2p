@@ -12,7 +12,7 @@ public class Main {
 
     public static void main(String[] args) throws Exception {
         final ResourceConfig rc = new ResourceConfig()
-                .packages("com.study")
+            .packages("com.study", "com.study.friends")
                 .register(JacksonFeature.class) // JSON
                 .register(CORSFilter.class) // CORS
                 .register(Db.class) // Database

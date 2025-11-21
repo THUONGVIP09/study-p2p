@@ -4,6 +4,10 @@
 
 list(APPEND FLUTTER_PLUGIN_LIST
   agora_rtc_engine
+<<<<<<< HEAD
+  flutter_webrtc
+=======
+>>>>>>> 108dbfc4e00a1938aef5e3fc9ca98cad6e84ad55
   iris_method_channel
   permission_handler_windows
 )

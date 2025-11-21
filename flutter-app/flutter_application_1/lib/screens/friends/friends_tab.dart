@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../services/friends_service.dart';
 
 class FriendsTab extends StatefulWidget {
   const FriendsTab({super.key});
@@ -9,34 +10,38 @@ class FriendsTab extends StatefulWidget {
 
 class _FriendsTabState extends State<FriendsTab> {
   final TextEditingController searchCtrl = TextEditingController();
-
-  // Dummy data
-  List<Map<String, dynamic>> dummyFriends = [
-    {"id": 1, "name": "Alice"},
-    {"id": 2, "name": "Bob"},
-    {"id": 3, "name": "Chloe"},
-    {"id": 4, "name": "David"},
-    {"id": 5, "name": "Eva"},
-  ];
-
   List<Map<String, dynamic>> filteredFriends = [];
+  bool isLoading = false;
+  String? errorMessage;
 
   @override
   void initState() {
     super.initState();
-    filteredFriends = dummyFriends;
+    _loadFriends();
   }
 
-  void filterFriends(String query) {
+  Future<void> _loadFriends({String query = ''}) async {
     setState(() {
-      if (query.isEmpty) {
-        filteredFriends = dummyFriends;
-      } else {
-        filteredFriends = dummyFriends
-            .where((f) => f["name"].toLowerCase().contains(query.toLowerCase()))
-            .toList();
-      }
+      isLoading = true;
+      errorMessage = null;
     });
+
+    try {
+      final friends = await FriendsService.getFriends(q: query);
+      setState(() {
+        filteredFriends = friends;
+        isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        errorMessage = 'Error loading friends: $e';
+        isLoading = false;
+      });
+    }
+  }
+
+  void _onSearchChanged(String query) {
+    _loadFriends(query: query);
   }
 
   @override
@@ -50,73 +55,132 @@ class _FriendsTabState extends State<FriendsTab> {
             controller: searchCtrl,
             decoration: InputDecoration(
               hintText: "Search friends...",
-              prefixIcon: Icon(Icons.search),
+              prefixIcon: const Icon(Icons.search),
+              suffixIcon: searchCtrl.text.isNotEmpty
+                  ? IconButton(
+                      icon: const Icon(Icons.clear),
+                      onPressed: () {
+                        searchCtrl.clear();
+                        _onSearchChanged('');
+                      },
+                    )
+                  : null,
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
               ),
             ),
-            onChanged: filterFriends,
+            onChanged: _onSearchChanged,
           ),
         ),
 
-        // List friends
-        Expanded(
-          child: ListView.builder(
-            itemCount: filteredFriends.length,
-            itemBuilder: (context, index) {
-              final user = filteredFriends[index];
-              return Card(
-                margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                child: Padding(
-                  padding: const EdgeInsets.all(8.0),
-                  child: Row(
-                    children: [
-                      // Avatar
-                      CircleAvatar(child: Text(user["name"][0])),
-                      const SizedBox(width: 12),
+        // Error message
+        if (errorMessage != null)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            child: Text(
+              errorMessage!,
+              style: const TextStyle(color: Colors.red, fontSize: 12),
+            ),
+          ),
 
-                      // Name
-                      Expanded(
-                        child: Text(
-                          user["name"],
-                          style: const TextStyle(
-                              fontSize: 16, fontWeight: FontWeight.w500),
+        // Loading indicator
+        if (isLoading)
+          const Expanded(
+            child: Center(
+              child: CircularProgressIndicator(),
+            ),
+          )
+        else if (filteredFriends.isEmpty)
+          Expanded(
+            child: Center(
+              child: Text(
+                searchCtrl.text.isEmpty ? "No friends yet" : "No friends found",
+                style: const TextStyle(fontSize: 14, color: Colors.grey),
+              ),
+            ),
+          )
+        else
+          // List friends
+          Expanded(
+            child: ListView.builder(
+              itemCount: filteredFriends.length,
+              itemBuilder: (context, index) {
+                final user = filteredFriends[index];
+                return Card(
+                  margin:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  child: Padding(
+                    padding: const EdgeInsets.all(8.0),
+                    child: Row(
+                      children: [
+                        // Avatar
+                        CircleAvatar(
+                          child: Text(
+                            (user['displayName'] ?? 'U')[0].toUpperCase(),
+                          ),
                         ),
-                      ),
+                        const SizedBox(width: 12),
 
-                      // Buttons
-                      Row(
-                        children: [
-                          ElevatedButton(
-                            onPressed: () {
-                              // TODO: Chat
-                            },
-                            child: const Text("Chat"),
+                        // Name & Email
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                user['displayName'] ?? 'Unknown',
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 14,
+                                ),
+                              ),
+                              Text(
+                                user['email'] ?? '',
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey,
+                                ),
+                              ),
+                            ],
                           ),
-                          const SizedBox(width: 4),
-                          OutlinedButton(
-                            onPressed: () {
-                              // TODO: Unfriend
-                            },
-                            child: const Text("Unfriend"),
-                          ),
-                          const SizedBox(width: 4),
-                          OutlinedButton(
-                            onPressed: () {
-                              // TODO: Block User
-                            },
-                            child: const Text("Block User"),
-                          ),
-                        ],
-                      ),
-                    ],
+                        ),
+
+                        // Action button (placeholder)
+                        PopupMenuButton<String>(
+                          onSelected: (value) {
+                            // TODO: Implement actions (message, remove friend, block, etc.)
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('Action: $value')),
+                            );
+                          },
+                          itemBuilder: (BuildContext context) => [
+                            const PopupMenuItem(
+                              value: 'message',
+                              child: Text('Message'),
+                            ),
+                            const PopupMenuItem(
+                              value: 'remove',
+                              child: Text('Remove Friend'),
+                            ),
+                            const PopupMenuItem(
+                              value: 'block',
+                              child: Text('Block'),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-              );
-            },
+                );
+              },
+            ),
           ),
-        ),
       ],
     );
+  }
+
+  @override
+  void dispose() {
+    searchCtrl.dispose();
+    super.dispose();
   }
 }
