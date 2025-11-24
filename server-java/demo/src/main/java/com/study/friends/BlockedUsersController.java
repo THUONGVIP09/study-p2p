@@ -1,12 +1,12 @@
 package com.study.friends;
 
+import com.study.dto.BlockedUserDto;
+import com.study.dto.ErrorResponse;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import java.sql.*;
 import java.util.*;
-
-record BlockedUserDto(long id, String email, String displayName, String blockedAt) {}
 
 @Path("/api/blocked-users")
 @Produces(MediaType.APPLICATION_JSON)

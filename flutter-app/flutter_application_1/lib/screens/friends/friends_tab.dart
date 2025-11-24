@@ -144,13 +144,99 @@ class _FriendsTabState extends State<FriendsTab> {
                           ),
                         ),
 
-                        // Action button (placeholder)
+                        // Action button
                         PopupMenuButton<String>(
-                          onSelected: (value) {
-                            // TODO: Implement actions (message, remove friend, block, etc.)
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text('Action: $value')),
-                            );
+                          onSelected: (value) async {
+                            final userId = user['id'] as int;
+                            if (value == 'remove') {
+                              // Show confirmation dialog
+                              final confirmed = await showDialog<bool>(
+                                context: context,
+                                builder: (ctx) => AlertDialog(
+                                  title: const Text('Remove Friend'),
+                                  content: const Text(
+                                      'Are you sure you want to remove this friend?'),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () =>
+                                          Navigator.pop(ctx, false),
+                                      child: const Text('Cancel'),
+                                    ),
+                                    TextButton(
+                                      onPressed: () => Navigator.pop(ctx, true),
+                                      child: const Text('Remove'),
+                                    ),
+                                  ],
+                                ),
+                              );
+
+                              if (confirmed == true) {
+                                try {
+                                  await FriendsService.removeFriend(userId);
+                                  if (mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                          content:
+                                              Text('Friend removed successfully')),
+                                    );
+                                    _loadFriends();
+                                  }
+                                } catch (e) {
+                                  if (mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                          content: Text('Error: $e')),
+                                    );
+                                  }
+                                }
+                              }
+                            } else if (value == 'block') {
+                              // Show confirmation dialog
+                              final confirmed = await showDialog<bool>(
+                                context: context,
+                                builder: (ctx) => AlertDialog(
+                                  title: const Text('Block User'),
+                                  content: const Text(
+                                      'Are you sure you want to block this user? This will remove them from your friends list and delete any pending friend requests.'),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () =>
+                                          Navigator.pop(ctx, false),
+                                      child: const Text('Cancel'),
+                                    ),
+                                    TextButton(
+                                      onPressed: () => Navigator.pop(ctx, true),
+                                      child: const Text('Block'),
+                                    ),
+                                  ],
+                                ),
+                              );
+
+                              if (confirmed == true) {
+                                try {
+                                  await FriendsService.blockUser(userId);
+                                  if (mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                          content: Text('User blocked successfully')),
+                                    );
+                                    _loadFriends();
+                                  }
+                                } catch (e) {
+                                  if (mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                          content: Text('Error: $e')),
+                                    );
+                                  }
+                                }
+                              }
+                            } else if (value == 'message') {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                    content: Text('Message feature coming soon')),
+                              );
+                            }
                           },
                           itemBuilder: (BuildContext context) => [
                             const PopupMenuItem(

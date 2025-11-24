@@ -1,12 +1,12 @@
 package com.study.friends;
 
+import com.study.dto.FriendRequestDto;
+import com.study.dto.ErrorResponse;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import java.sql.*;
 import java.util.*;
-
-record FriendRequestDto(long id, long fromUserId, String fromUserName, String status, String createdAt) {}
 
 @Path("/api/friend-requests")
 @Produces(MediaType.APPLICATION_JSON)

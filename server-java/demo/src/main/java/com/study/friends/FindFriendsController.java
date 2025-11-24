@@ -1,12 +1,13 @@
 package com.study.friends;
 
+import com.study.dto.DiscoverUserDto;
+import com.study.dto.UserDto;
+import com.study.dto.ErrorResponse;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import java.sql.*;
 import java.util.*;
-
-record DiscoverUserDto(long id, String email, String displayName, String relationshipStatus) {}
 
 @Path("/api/find-friends")
 @Produces(MediaType.APPLICATION_JSON)

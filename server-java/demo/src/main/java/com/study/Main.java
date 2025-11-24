@@ -19,6 +19,10 @@ public class Main {
                 .register(AuthController.class) // Auth
                 .register(RoomsController.class) // Room
                 .register(CallController.class) // Call
+                .register(com.study.friends.FriendsController.class) // Friends
+                .register(com.study.friends.FriendRequestsController.class) // Friend Requests
+                .register(com.study.friends.BlockedUsersController.class) // Blocked Users
+                .register(com.study.friends.FindFriendsController.class) // Find Friends
         ;
 
         HttpServer server = GrizzlyHttpServerFactory.createHttpServer(URI.create("http://0.0.0.0:8080/"), rc, true);

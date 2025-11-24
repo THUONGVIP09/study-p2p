@@ -109,20 +109,50 @@ class _FriendRequestsTabState extends State<FriendRequestsTab> {
                         IconButton(
                           icon: const Icon(Icons.check_circle,
                               color: Colors.green),
-                          onPressed: () {
-                            // TODO: Accept request
-                            ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                    content: Text('Accept not implemented')));
+                          onPressed: () async {
+                            final requestId = req['id'] as int;
+                            try {
+                              await FriendsService.acceptFriendRequest(
+                                  requestId);
+                              if (mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                      content: Text(
+                                          'Friend request accepted')),
+                                );
+                                _loadRequests();
+                              }
+                            } catch (e) {
+                              if (mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text('Error: $e')),
+                                );
+                              }
+                            }
                           },
                         ),
                         IconButton(
                           icon: const Icon(Icons.cancel, color: Colors.red),
-                          onPressed: () {
-                            // TODO: Reject request
-                            ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                    content: Text('Reject not implemented')));
+                          onPressed: () async {
+                            final requestId = req['id'] as int;
+                            try {
+                              await FriendsService.rejectFriendRequest(
+                                  requestId);
+                              if (mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                      content: Text(
+                                          'Friend request rejected')),
+                                );
+                                _loadRequests();
+                              }
+                            } catch (e) {
+                              if (mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text('Error: $e')),
+                                );
+                              }
+                            }
                           },
                         ),
                       ],

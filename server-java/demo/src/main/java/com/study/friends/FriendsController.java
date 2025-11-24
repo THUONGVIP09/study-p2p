@@ -1,14 +1,12 @@
 package com.study.friends;
 
+import com.study.dto.UserDto;
+import com.study.dto.ErrorResponse;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import java.sql.*;
 import java.util.*;
-
-// DTO
-record UserDto(long id, String email, String displayName) {}
-record ErrorResponse(boolean success, String message) {}
 
 @Path("/api/friends")
 @Produces(MediaType.APPLICATION_JSON)

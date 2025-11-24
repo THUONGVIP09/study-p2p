@@ -83,6 +83,126 @@ class FriendsService {
         (data as List).map((e) => Map<String, dynamic>.from(e)));
   }
 
+  static Future<Map<String, dynamic>> sendFriendRequest(int toUserId) async {
+    final uri = Uri.parse('${_base()}/api/friend-requests');
+    final token = await ApiService.getToken();
+    final headers = <String, String>{'Content-Type': 'application/json'};
+    if (token != null && token.isNotEmpty)
+      headers['Authorization'] = 'Bearer $token';
+
+    final res = await http.post(
+      uri,
+      headers: headers,
+      body: jsonEncode({'toUserId': toUserId}),
+    );
+
+    final body = _safeJson(res.body);
+    if (res.statusCode != 200) {
+      throw Exception(body['message'] ?? 'Failed to send friend request');
+    }
+    return body;
+  }
+
+  static Future<Map<String, dynamic>> acceptFriendRequest(int requestId) async {
+    final uri = Uri.parse('${_base()}/api/friend-requests/$requestId/accept');
+    final token = await ApiService.getToken();
+    final headers = <String, String>{'Content-Type': 'application/json'};
+    if (token != null && token.isNotEmpty)
+      headers['Authorization'] = 'Bearer $token';
+
+    final res = await http.post(uri, headers: headers);
+
+    final body = _safeJson(res.body);
+    if (res.statusCode != 200) {
+      throw Exception(body['message'] ?? 'Failed to accept friend request');
+    }
+    return body;
+  }
+
+  static Future<Map<String, dynamic>> rejectFriendRequest(int requestId) async {
+    final uri = Uri.parse('${_base()}/api/friend-requests/$requestId/reject');
+    final token = await ApiService.getToken();
+    final headers = <String, String>{'Content-Type': 'application/json'};
+    if (token != null && token.isNotEmpty)
+      headers['Authorization'] = 'Bearer $token';
+
+    final res = await http.post(uri, headers: headers);
+
+    final body = _safeJson(res.body);
+    if (res.statusCode != 200) {
+      throw Exception(body['message'] ?? 'Failed to reject friend request');
+    }
+    return body;
+  }
+
+  static Future<Map<String, dynamic>> cancelFriendRequest(int requestId) async {
+    final uri = Uri.parse('${_base()}/api/friend-requests/$requestId');
+    final token = await ApiService.getToken();
+    final headers = <String, String>{'Content-Type': 'application/json'};
+    if (token != null && token.isNotEmpty)
+      headers['Authorization'] = 'Bearer $token';
+
+    final res = await http.delete(uri, headers: headers);
+
+    final body = _safeJson(res.body);
+    if (res.statusCode != 200) {
+      throw Exception(body['message'] ?? 'Failed to cancel friend request');
+    }
+    return body;
+  }
+
+  static Future<Map<String, dynamic>> removeFriend(int userId) async {
+    final uri = Uri.parse('${_base()}/api/friends/$userId');
+    final token = await ApiService.getToken();
+    final headers = <String, String>{'Content-Type': 'application/json'};
+    if (token != null && token.isNotEmpty)
+      headers['Authorization'] = 'Bearer $token';
+
+    final res = await http.delete(uri, headers: headers);
+
+    final body = _safeJson(res.body);
+    if (res.statusCode != 200) {
+      throw Exception(body['message'] ?? 'Failed to remove friend');
+    }
+    return body;
+  }
+
+  static Future<Map<String, dynamic>> blockUser(int blockedUserId) async {
+    final uri = Uri.parse('${_base()}/api/blocked-users');
+    final token = await ApiService.getToken();
+    final headers = <String, String>{'Content-Type': 'application/json'};
+    if (token != null && token.isNotEmpty)
+      headers['Authorization'] = 'Bearer $token';
+
+    final res = await http.post(
+      uri,
+      headers: headers,
+      body: jsonEncode({'blockedUserId': blockedUserId}),
+    );
+
+    final body = _safeJson(res.body);
+    if (res.statusCode != 200) {
+      throw Exception(body['message'] ?? 'Failed to block user');
+    }
+    return body;
+  }
+
+  static Future<Map<String, dynamic>> unblockUser(int userId) async {
+    final uri = Uri.parse('${_base()}/api/blocked-users/$userId');
+    final token = await ApiService.getToken();
+    final headers = <String, String>{'Content-Type': 'application/json'};
+    if (token != null && token.isNotEmpty)
+      headers['Authorization'] = 'Bearer $token';
+
+    final res = await http.delete(uri, headers: headers);
+
+    final body = _safeJson(res.body);
+    if (res.statusCode != 200) {
+      throw Exception(body['message'] ?? 'Failed to unblock user');
+    }
+    return body;
+  }
+
   static Map<String, dynamic> _safeJson(String body) {
     try {
       final decoded = jsonDecode(body);
