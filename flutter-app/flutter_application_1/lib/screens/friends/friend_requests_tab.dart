@@ -94,15 +94,18 @@ class _FriendRequestsTabState extends State<FriendRequestsTab> {
               itemCount: requests.length,
               itemBuilder: (context, index) {
                 final req = requests[index];
-                final name = req['displayName'] ?? req['name'] ?? 'Unknown';
+                final name = req['fromUserName'] ?? req['displayName'] ?? 'Unknown';
+                final status = req['status'] ?? 'PENDING';
+                final createdAt = req['createdAt'] ?? '';
                 return Card(
                   margin:
                       const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   child: ListTile(
                     leading: CircleAvatar(child: Text(name[0])),
                     title: Text(name),
-                    subtitle:
-                        Text(req['message'] ?? 'Sent you a friend request'),
+                    subtitle: Text(createdAt.isNotEmpty
+                        ? 'Sent at $createdAt'
+                        : 'Sent you a friend request'),
                     trailing: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
