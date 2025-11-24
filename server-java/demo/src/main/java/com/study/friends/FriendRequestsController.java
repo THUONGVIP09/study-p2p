@@ -127,7 +127,9 @@ public class FriendRequestsController {
 
             List<FriendRequestDto> requests = new ArrayList<>();
 
-            // For sent requests: show recipient (to_user) information
+            // For sent requests: retrieve recipient (to_user) information
+            // Note: FriendRequestDto fields are named "fromUser" but for sent requests,
+            // we populate them with recipient data (the user TO whom request was sent)
             String sql = "SELECT fr.id, fr.to_user_id, u.display_name, fr.status, fr.created_at " +
                     "FROM friend_requests fr " +
                     "JOIN users u ON u.id = fr.to_user_id " +
@@ -152,11 +154,10 @@ public class FriendRequestsController {
 
                 try (ResultSet rs = ps.executeQuery()) {
                     while (rs.next()) {
-                        // Note: For sent requests, we show recipient info but use DTO's "from" fields
                         requests.add(new FriendRequestDto(
                                 rs.getLong("id"),
-                                rs.getLong("to_user_id"),  // Recipient's user ID
-                                rs.getString("display_name"),  // Recipient's display name
+                                rs.getLong("to_user_id"),
+                                rs.getString("display_name"),
                                 rs.getString("status"),
                                 rs.getString("created_at")
                         ));
@@ -297,8 +298,8 @@ public class FriendRequestsController {
                                                 .build();
                                     }
                                     
-                                    // Update to PENDING and refresh timestamp, maintaining original direction
-                                    String updateSql = "UPDATE friend_requests SET status = 'PENDING', created_at = NOW(), updated_at = NOW() WHERE id = ?";
+                                    // Update to PENDING and refresh updated_at timestamp, keeping original created_at
+                                    String updateSql = "UPDATE friend_requests SET status = 'PENDING', updated_at = NOW() WHERE id = ?";
                                     try (PreparedStatement updatePs = conn.prepareStatement(updateSql)) {
                                         updatePs.setLong(1, requestId);
                                         updatePs.executeUpdate();

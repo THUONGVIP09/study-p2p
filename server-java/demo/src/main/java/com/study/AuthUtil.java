@@ -24,8 +24,8 @@ public class AuthUtil {
         
         String tokenValue = token.trim();
         
-        // Remove "Bearer " prefix if present
-        if (tokenValue.toLowerCase().startsWith("bearer ")) {
+        // Remove "Bearer " prefix if present (case-insensitive)
+        if (tokenValue.regionMatches(true, 0, "bearer ", 0, 7)) {
             tokenValue = tokenValue.substring(7).trim();
         }
         
