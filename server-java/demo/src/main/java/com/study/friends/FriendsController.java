@@ -194,7 +194,7 @@ public class FriendsController {
                 
                 try {
                     // Kiểm tra xem có phải bạn bè không
-                    String checkSql = "SELECT id FROM friendships WHERE state = 'ACTIVE' " +
+                        String checkSql = "SELECT 1 FROM friendships WHERE state = 'ACTIVE' " +
                             "AND ((user_id_a = ? AND user_id_b = ?) OR (user_id_a = ? AND user_id_b = ?))";
                     try (PreparedStatement checkPs = conn.prepareStatement(checkSql)) {
                         checkPs.setLong(1, Math.min(userId, friendId));

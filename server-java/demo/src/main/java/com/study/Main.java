@@ -15,7 +15,6 @@ public class Main {
                 .packages("com.study")
                 .register(JacksonFeature.class) // JSON
                 .register(CORSFilter.class) // CORS
-                .register(Db.class) // Database
                 .register(AuthController.class) // Auth
                 .register(RoomsController.class) // Room
                 .register(CallController.class) // Call

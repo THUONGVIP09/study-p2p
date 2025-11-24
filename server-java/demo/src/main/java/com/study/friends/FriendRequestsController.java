@@ -235,7 +235,7 @@ public class FriendRequestsController {
                     }
 
                     // Kiểm tra xem đã là bạn bè chưa
-                    String checkFriendSql = "SELECT id FROM friendships WHERE state = 'ACTIVE' " +
+                        String checkFriendSql = "SELECT 1 FROM friendships WHERE state = 'ACTIVE' " +
                             "AND ((user_id_a = ? AND user_id_b = ?) OR (user_id_a = ? AND user_id_b = ?))";
                     try (PreparedStatement checkFriendPs = conn.prepareStatement(checkFriendSql)) {
                         checkFriendPs.setLong(1, userId);
@@ -252,7 +252,7 @@ public class FriendRequestsController {
                     }
 
                     // Kiểm tra xem có bị block không
-                    String checkBlockSql = "SELECT id FROM user_blocks " +
+                        String checkBlockSql = "SELECT 1 FROM user_blocks " +
                             "WHERE (blocker_id = ? AND blocked_id = ?) OR (blocker_id = ? AND blocked_id = ?)";
                     try (PreparedStatement checkBlockPs = conn.prepareStatement(checkBlockSql)) {
                         checkBlockPs.setLong(1, userId);
@@ -422,7 +422,7 @@ public class FriendRequestsController {
                     }
 
                     // Kiểm tra xem có bị block không
-                    String checkBlockSql = "SELECT id FROM user_blocks " +
+                        String checkBlockSql = "SELECT 1 FROM user_blocks " +
                             "WHERE (blocker_id = ? AND blocked_id = ?) OR (blocker_id = ? AND blocked_id = ?)";
                     try (PreparedStatement checkBlockPs = conn.prepareStatement(checkBlockSql)) {
                         checkBlockPs.setLong(1, fromUserId);
@@ -439,7 +439,7 @@ public class FriendRequestsController {
                     }
 
                     // Kiểm tra xem đã là bạn bè chưa (tránh duplicate)
-                    String checkFriendshipSql = "SELECT id FROM friendships WHERE state = 'ACTIVE' " +
+                        String checkFriendshipSql = "SELECT 1 FROM friendships WHERE state = 'ACTIVE' " +
                             "AND ((user_id_a = ? AND user_id_b = ?) OR (user_id_a = ? AND user_id_b = ?))";
                     try (PreparedStatement checkFriendshipPs = conn.prepareStatement(checkFriendshipSql)) {
                         checkFriendshipPs.setLong(1, Math.min(fromUserId, toUserId));
@@ -472,7 +472,7 @@ public class FriendRequestsController {
                     }
 
                     // Tạo friendship
-                    String insertSql = "INSERT INTO friendships (user_id_a, user_id_b, state, created_at) " +
+                        String insertSql = "INSERT INTO friendships (user_id_a, user_id_b, state, since) " +
                             "VALUES (?, ?, 'ACTIVE', NOW())";
                     try (PreparedStatement insertPs = conn.prepareStatement(insertSql)) {
                         insertPs.setLong(1, Math.min(fromUserId, toUserId));

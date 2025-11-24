@@ -223,7 +223,7 @@ public class BlockedUsersController {
                     }
 
                     // Kiểm tra xem đã block chưa
-                    String checkBlockSql = "SELECT id FROM user_blocks WHERE blocker_id = ? AND blocked_id = ?";
+                    String checkBlockSql = "SELECT 1 FROM user_blocks WHERE blocker_id = ? AND blocked_id = ?";
                     try (PreparedStatement checkBlockPs = conn.prepareStatement(checkBlockSql)) {
                         checkBlockPs.setLong(1, userId);
                         checkBlockPs.setLong(2, blockedUserId);
@@ -318,7 +318,7 @@ public class BlockedUsersController {
 
             try (Connection conn = com.study.Db.get()) {
                 // Kiểm tra xem đã block chưa
-                String checkSql = "SELECT id FROM user_blocks WHERE blocker_id = ? AND blocked_id = ?";
+                String checkSql = "SELECT 1 FROM user_blocks WHERE blocker_id = ? AND blocked_id = ?";
                 try (PreparedStatement checkPs = conn.prepareStatement(checkSql)) {
                     checkPs.setLong(1, userId);
                     checkPs.setLong(2, blockedUserId);
