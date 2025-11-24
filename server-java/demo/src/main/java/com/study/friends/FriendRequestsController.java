@@ -298,8 +298,8 @@ public class FriendRequestsController {
                                                 .build();
                                     }
                                     
-                                    // Update to PENDING and refresh updated_at timestamp, keeping original created_at
-                                    String updateSql = "UPDATE friend_requests SET status = 'PENDING', updated_at = NOW() WHERE id = ?";
+                                    // Update to PENDING, keeping original created_at
+                                    String updateSql = "UPDATE friend_requests SET status = 'PENDING' WHERE id = ?";
                                     try (PreparedStatement updatePs = conn.prepareStatement(updateSql)) {
                                         updatePs.setLong(1, requestId);
                                         updatePs.executeUpdate();
@@ -449,7 +449,7 @@ public class FriendRequestsController {
                         try (ResultSet friendshipRs = checkFriendshipPs.executeQuery()) {
                             if (friendshipRs.next()) {
                                 // Already friends, just update request status
-                                String updateSql = "UPDATE friend_requests SET status = 'ACCEPTED', updated_at = NOW() WHERE id = ?";
+                                String updateSql = "UPDATE friend_requests SET status = 'ACCEPTED' WHERE id = ?";
                                 try (PreparedStatement updatePs = conn.prepareStatement(updateSql)) {
                                     updatePs.setLong(1, requestId);
                                     updatePs.executeUpdate();
@@ -465,7 +465,7 @@ public class FriendRequestsController {
                     }
 
                     // Update request status
-                    String updateSql = "UPDATE friend_requests SET status = 'ACCEPTED', updated_at = NOW() WHERE id = ?";
+                    String updateSql = "UPDATE friend_requests SET status = 'ACCEPTED' WHERE id = ?";
                     try (PreparedStatement updatePs = conn.prepareStatement(updateSql)) {
                         updatePs.setLong(1, requestId);
                         updatePs.executeUpdate();
@@ -557,7 +557,7 @@ public class FriendRequestsController {
                 }
 
                 // Update request status
-                String updateSql = "UPDATE friend_requests SET status = 'REJECTED', updated_at = NOW() WHERE id = ?";
+                String updateSql = "UPDATE friend_requests SET status = 'REJECTED' WHERE id = ?";
                 try (PreparedStatement updatePs = conn.prepareStatement(updateSql)) {
                     updatePs.setLong(1, requestId);
                     updatePs.executeUpdate();
@@ -634,7 +634,7 @@ public class FriendRequestsController {
                 }
 
                 // Update request status to CANCELED
-                String updateSql = "UPDATE friend_requests SET status = 'CANCELED', updated_at = NOW() WHERE id = ?";
+                String updateSql = "UPDATE friend_requests SET status = 'CANCELED' WHERE id = ?";
                 try (PreparedStatement updatePs = conn.prepareStatement(updateSql)) {
                     updatePs.setLong(1, requestId);
                     updatePs.executeUpdate();
