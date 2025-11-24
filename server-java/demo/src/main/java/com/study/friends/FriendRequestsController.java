@@ -127,7 +127,8 @@ public class FriendRequestsController {
 
             List<FriendRequestDto> requests = new ArrayList<>();
 
-            String sql = "SELECT fr.id, fr.to_user_id as from_user_id, u.display_name, fr.status, fr.created_at " +
+            // For sent requests: show recipient (to_user) information
+            String sql = "SELECT fr.id, fr.to_user_id, u.display_name, fr.status, fr.created_at " +
                     "FROM friend_requests fr " +
                     "JOIN users u ON u.id = fr.to_user_id " +
                     "WHERE fr.from_user_id = ? " +
@@ -151,10 +152,11 @@ public class FriendRequestsController {
 
                 try (ResultSet rs = ps.executeQuery()) {
                     while (rs.next()) {
+                        // Note: For sent requests, we show recipient info but use DTO's "from" fields
                         requests.add(new FriendRequestDto(
                                 rs.getLong("id"),
-                                rs.getLong("from_user_id"),
-                                rs.getString("display_name"),
+                                rs.getLong("to_user_id"),  // Recipient's user ID
+                                rs.getString("display_name"),  // Recipient's display name
                                 rs.getString("status"),
                                 rs.getString("created_at")
                         ));
