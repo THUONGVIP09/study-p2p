@@ -151,4 +151,84 @@ public class FriendsController {
                     .build();
         }
     }
+
+    /**
+     * DELETE /api/friends/{userId}
+     * Xóa bạn bè (Remove Friend)
+     * Frontend nên hiển thị dialog xác nhận trước khi gọi endpoint này
+     */
+    @DELETE
+    @Path("/{userId}")
+    public Response removeFriend(
+            @PathParam("userId") long friendId,
+            @HeaderParam("Authorization") String token) {
+
+        try {
+            long userId = 1; // TODO: từ token
+
+            if (userId == friendId) {
+                return Response.status(400)
+                        .entity(new ErrorResponse(false, "Cannot remove yourself"))
+                        .build();
+            }
+
+            Connection conn = com.study.Db.get();
+
+            // Kiểm tra xem có phải bạn bè không
+            String checkSql = "SELECT id FROM friendships WHERE state = 'ACTIVE' " +
+                    "AND ((user_id_a = ? AND user_id_b = ?) OR (user_id_a = ? AND user_id_b = ?))";
+            PreparedStatement checkPs = conn.prepareStatement(checkSql);
+            checkPs.setLong(1, Math.min(userId, friendId));
+            checkPs.setLong(2, Math.max(userId, friendId));
+            checkPs.setLong(3, Math.max(userId, friendId));
+            checkPs.setLong(4, Math.min(userId, friendId));
+            ResultSet rs = checkPs.executeQuery();
+
+            if (!rs.next()) {
+                rs.close();
+                checkPs.close();
+                conn.close();
+                return Response.status(404)
+                        .entity(new ErrorResponse(false, "Friendship not found"))
+                        .build();
+            }
+            rs.close();
+            checkPs.close();
+
+            // Xóa friendship
+            String deleteSql = "DELETE FROM friendships WHERE state = 'ACTIVE' " +
+                    "AND ((user_id_a = ? AND user_id_b = ?) OR (user_id_a = ? AND user_id_b = ?))";
+            PreparedStatement deletePs = conn.prepareStatement(deleteSql);
+            deletePs.setLong(1, Math.min(userId, friendId));
+            deletePs.setLong(2, Math.max(userId, friendId));
+            deletePs.setLong(3, Math.max(userId, friendId));
+            deletePs.setLong(4, Math.min(userId, friendId));
+            int rowsDeleted = deletePs.executeUpdate();
+            deletePs.close();
+
+            conn.close();
+
+            if (rowsDeleted > 0) {
+                return Response.ok(Map.of(
+                        "success", true,
+                        "message", "Friend removed successfully"
+                )).build();
+            } else {
+                return Response.status(500)
+                        .entity(new ErrorResponse(false, "Failed to remove friend"))
+                        .build();
+            }
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return Response.status(500)
+                    .entity(new ErrorResponse(false, "Database error: " + e.getMessage()))
+                    .build();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return Response.status(500)
+                    .entity(new ErrorResponse(false, "Unexpected error: " + e.getMessage()))
+                    .build();
+        }
+    }
 }
