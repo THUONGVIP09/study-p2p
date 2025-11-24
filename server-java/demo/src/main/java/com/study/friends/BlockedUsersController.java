@@ -1,5 +1,6 @@
 package com.study.friends;
 
+import com.study.AuthUtil;
 import com.study.dto.BlockedUserDto;
 import com.study.dto.ErrorResponse;
 import jakarta.ws.rs.*;
@@ -25,7 +26,13 @@ public class BlockedUsersController {
             @HeaderParam("Authorization") String token) {
 
         try {
-            long userId = 1; // TODO: từ token
+            // Parse token to get actual userId
+            long userId;
+            try {
+                userId = AuthUtil.getUserIdFromToken(token);
+            } catch (IllegalArgumentException e) {
+                return AuthUtil.createUnauthorizedResponse(e.getMessage());
+            }
 
             limit = Math.min(limit, 100);
             if (offset < 0) offset = 0;
@@ -40,32 +47,31 @@ public class BlockedUsersController {
                     "ORDER BY ub.created_at DESC " +
                     "LIMIT ? OFFSET ?";
 
-            Connection conn = com.study.Db.get();
-            PreparedStatement ps = conn.prepareStatement(sql);
-            ps.setLong(1, userId);
+            try (Connection conn = com.study.Db.get();
+                 PreparedStatement ps = conn.prepareStatement(sql)) {
+                
+                ps.setLong(1, userId);
 
-            int paramIdx = 2;
-            if (!q.isEmpty()) {
-                String qLike = "%" + q + "%";
-                ps.setString(paramIdx++, qLike);
-                ps.setString(paramIdx++, qLike);
+                int paramIdx = 2;
+                if (!q.isEmpty()) {
+                    String qLike = "%" + q + "%";
+                    ps.setString(paramIdx++, qLike);
+                    ps.setString(paramIdx++, qLike);
+                }
+                ps.setInt(paramIdx++, limit);
+                ps.setInt(paramIdx, offset);
+
+                try (ResultSet rs = ps.executeQuery()) {
+                    while (rs.next()) {
+                        blockedUsers.add(new BlockedUserDto(
+                                rs.getLong("id"),
+                                rs.getString("email"),
+                                rs.getString("display_name"),
+                                rs.getString("created_at")
+                        ));
+                    }
+                }
             }
-            ps.setInt(paramIdx++, limit);
-            ps.setInt(paramIdx, offset);
-
-            ResultSet rs = ps.executeQuery();
-            while (rs.next()) {
-                blockedUsers.add(new BlockedUserDto(
-                        rs.getLong("id"),
-                        rs.getString("email"),
-                        rs.getString("display_name"),
-                        rs.getString("created_at")
-                ));
-            }
-
-            rs.close();
-            ps.close();
-            conn.close();
 
             return Response.ok(Map.of(
                     "success", true,
@@ -99,7 +105,13 @@ public class BlockedUsersController {
             @HeaderParam("Authorization") String token) {
 
         try {
-            long userId = 1; // TODO: từ token
+            // Parse token to get actual userId
+            long userId;
+            try {
+                userId = AuthUtil.getUserIdFromToken(token);
+            } catch (IllegalArgumentException e) {
+                return AuthUtil.createUnauthorizedResponse(e.getMessage());
+            }
 
             limit = Math.min(limit, 100);
             if (offset < 0) offset = 0;
@@ -114,32 +126,31 @@ public class BlockedUsersController {
                     "ORDER BY ub.created_at DESC " +
                     "LIMIT ? OFFSET ?";
 
-            Connection conn = com.study.Db.get();
-            PreparedStatement ps = conn.prepareStatement(sql);
-            ps.setLong(1, userId);
+            try (Connection conn = com.study.Db.get();
+                 PreparedStatement ps = conn.prepareStatement(sql)) {
+                
+                ps.setLong(1, userId);
 
-            int paramIdx = 2;
-            if (!q.isEmpty()) {
-                String qLike = "%" + q + "%";
-                ps.setString(paramIdx++, qLike);
-                ps.setString(paramIdx++, qLike);
+                int paramIdx = 2;
+                if (!q.isEmpty()) {
+                    String qLike = "%" + q + "%";
+                    ps.setString(paramIdx++, qLike);
+                    ps.setString(paramIdx++, qLike);
+                }
+                ps.setInt(paramIdx++, limit);
+                ps.setInt(paramIdx, offset);
+
+                try (ResultSet rs = ps.executeQuery()) {
+                    while (rs.next()) {
+                        blockedBy.add(new BlockedUserDto(
+                                rs.getLong("id"),
+                                rs.getString("email"),
+                                rs.getString("display_name"),
+                                rs.getString("created_at")
+                        ));
+                    }
+                }
             }
-            ps.setInt(paramIdx++, limit);
-            ps.setInt(paramIdx, offset);
-
-            ResultSet rs = ps.executeQuery();
-            while (rs.next()) {
-                blockedBy.add(new BlockedUserDto(
-                        rs.getLong("id"),
-                        rs.getString("email"),
-                        rs.getString("display_name"),
-                        rs.getString("created_at")
-                ));
-            }
-
-            rs.close();
-            ps.close();
-            conn.close();
 
             return Response.ok(Map.of(
                     "success", true,
@@ -172,7 +183,13 @@ public class BlockedUsersController {
             @HeaderParam("Authorization") String token) {
 
         try {
-            long userId = 1; // TODO: từ token
+            // Parse token to get actual userId
+            long userId;
+            try {
+                userId = AuthUtil.getUserIdFromToken(token);
+            } catch (IllegalArgumentException e) {
+                return AuthUtil.createUnauthorizedResponse(e.getMessage());
+            }
 
             if (requestBody == null || !requestBody.containsKey("blockedUserId")) {
                 return Response.status(400)
@@ -188,79 +205,78 @@ public class BlockedUsersController {
                         .build();
             }
 
-            Connection conn = com.study.Db.get();
+            try (Connection conn = com.study.Db.get()) {
+                conn.setAutoCommit(false);
+                
+                try {
+                    // Kiểm tra xem user tồn tại không
+                    String checkUserSql = "SELECT id FROM users WHERE id = ? AND status = 'ACTIVE'";
+                    try (PreparedStatement checkUserPs = conn.prepareStatement(checkUserSql)) {
+                        checkUserPs.setLong(1, blockedUserId);
+                        try (ResultSet userRs = checkUserPs.executeQuery()) {
+                            if (!userRs.next()) {
+                                return Response.status(404)
+                                        .entity(new ErrorResponse(false, "User not found"))
+                                        .build();
+                            }
+                        }
+                    }
 
-            // Kiểm tra xem user tồn tại không
-            String checkUserSql = "SELECT id FROM users WHERE id = ? AND status = 'ACTIVE'";
-            PreparedStatement checkUserPs = conn.prepareStatement(checkUserSql);
-            checkUserPs.setLong(1, blockedUserId);
-            ResultSet userRs = checkUserPs.executeQuery();
-            
-            if (!userRs.next()) {
-                userRs.close();
-                checkUserPs.close();
-                conn.close();
-                return Response.status(404)
-                        .entity(new ErrorResponse(false, "User not found"))
-                        .build();
+                    // Kiểm tra xem đã block chưa
+                    String checkBlockSql = "SELECT id FROM user_blocks WHERE blocker_id = ? AND blocked_id = ?";
+                    try (PreparedStatement checkBlockPs = conn.prepareStatement(checkBlockSql)) {
+                        checkBlockPs.setLong(1, userId);
+                        checkBlockPs.setLong(2, blockedUserId);
+                        try (ResultSet blockRs = checkBlockPs.executeQuery()) {
+                            if (blockRs.next()) {
+                                return Response.status(400)
+                                        .entity(new ErrorResponse(false, "User is already blocked"))
+                                        .build();
+                            }
+                        }
+                    }
+
+                    // Xóa friendship nếu tồn tại
+                    String deleteFriendshipSql = "DELETE FROM friendships " +
+                            "WHERE ((user_id_a = ? AND user_id_b = ?) OR (user_id_a = ? AND user_id_b = ?))";
+                    try (PreparedStatement deleteFriendshipPs = conn.prepareStatement(deleteFriendshipSql)) {
+                        deleteFriendshipPs.setLong(1, Math.min(userId, blockedUserId));
+                        deleteFriendshipPs.setLong(2, Math.max(userId, blockedUserId));
+                        deleteFriendshipPs.setLong(3, Math.max(userId, blockedUserId));
+                        deleteFriendshipPs.setLong(4, Math.min(userId, blockedUserId));
+                        deleteFriendshipPs.executeUpdate();
+                    }
+
+                    // Xóa friend requests liên quan
+                    String deleteRequestsSql = "DELETE FROM friend_requests " +
+                            "WHERE (from_user_id = ? AND to_user_id = ?) OR (from_user_id = ? AND to_user_id = ?)";
+                    try (PreparedStatement deleteRequestsPs = conn.prepareStatement(deleteRequestsSql)) {
+                        deleteRequestsPs.setLong(1, userId);
+                        deleteRequestsPs.setLong(2, blockedUserId);
+                        deleteRequestsPs.setLong(3, blockedUserId);
+                        deleteRequestsPs.setLong(4, userId);
+                        deleteRequestsPs.executeUpdate();
+                    }
+
+                    // Tạo user_block
+                    String insertSql = "INSERT INTO user_blocks (blocker_id, blocked_id, created_at) VALUES (?, ?, NOW())";
+                    try (PreparedStatement insertPs = conn.prepareStatement(insertSql)) {
+                        insertPs.setLong(1, userId);
+                        insertPs.setLong(2, blockedUserId);
+                        insertPs.executeUpdate();
+                    }
+
+                    conn.commit();
+                    return Response.ok(Map.of(
+                            "success", true,
+                            "message", "User blocked successfully"
+                    )).build();
+                    
+                } catch (SQLException e) {
+                    conn.rollback();
+                    throw e;
+                }
             }
-            userRs.close();
-            checkUserPs.close();
-
-            // Kiểm tra xem đã block chưa
-            String checkBlockSql = "SELECT id FROM user_blocks WHERE blocker_id = ? AND blocked_id = ?";
-            PreparedStatement checkBlockPs = conn.prepareStatement(checkBlockSql);
-            checkBlockPs.setLong(1, userId);
-            checkBlockPs.setLong(2, blockedUserId);
-            ResultSet blockRs = checkBlockPs.executeQuery();
-            
-            if (blockRs.next()) {
-                blockRs.close();
-                checkBlockPs.close();
-                conn.close();
-                return Response.status(400)
-                        .entity(new ErrorResponse(false, "User is already blocked"))
-                        .build();
-            }
-            blockRs.close();
-            checkBlockPs.close();
-
-            // Xóa friendship nếu tồn tại
-            String deleteFriendshipSql = "DELETE FROM friendships " +
-                    "WHERE ((user_id_a = ? AND user_id_b = ?) OR (user_id_a = ? AND user_id_b = ?))";
-            PreparedStatement deleteFriendshipPs = conn.prepareStatement(deleteFriendshipSql);
-            deleteFriendshipPs.setLong(1, Math.min(userId, blockedUserId));
-            deleteFriendshipPs.setLong(2, Math.max(userId, blockedUserId));
-            deleteFriendshipPs.setLong(3, Math.max(userId, blockedUserId));
-            deleteFriendshipPs.setLong(4, Math.min(userId, blockedUserId));
-            deleteFriendshipPs.executeUpdate();
-            deleteFriendshipPs.close();
-
-            // Xóa friend requests liên quan
-            String deleteRequestsSql = "DELETE FROM friend_requests " +
-                    "WHERE (from_user_id = ? AND to_user_id = ?) OR (from_user_id = ? AND to_user_id = ?)";
-            PreparedStatement deleteRequestsPs = conn.prepareStatement(deleteRequestsSql);
-            deleteRequestsPs.setLong(1, userId);
-            deleteRequestsPs.setLong(2, blockedUserId);
-            deleteRequestsPs.setLong(3, blockedUserId);
-            deleteRequestsPs.setLong(4, userId);
-            deleteRequestsPs.executeUpdate();
-            deleteRequestsPs.close();
-
-            // Tạo user_block
-            String insertSql = "INSERT INTO user_blocks (blocker_id, blocked_id, created_at) VALUES (?, ?, NOW())";
-            PreparedStatement insertPs = conn.prepareStatement(insertSql);
-            insertPs.setLong(1, userId);
-            insertPs.setLong(2, blockedUserId);
-            insertPs.executeUpdate();
-            insertPs.close();
-
-            conn.close();
-
-            return Response.ok(Map.of(
-                    "success", true,
-                    "message", "User blocked successfully"
-            )).build();
 
         } catch (SQLException e) {
             e.printStackTrace();
@@ -286,7 +302,13 @@ public class BlockedUsersController {
             @HeaderParam("Authorization") String token) {
 
         try {
-            long userId = 1; // TODO: từ token
+            // Parse token to get actual userId
+            long userId;
+            try {
+                userId = AuthUtil.getUserIdFromToken(token);
+            } catch (IllegalArgumentException e) {
+                return AuthUtil.createUnauthorizedResponse(e.getMessage());
+            }
 
             if (userId == blockedUserId) {
                 return Response.status(400)
@@ -294,45 +316,41 @@ public class BlockedUsersController {
                         .build();
             }
 
-            Connection conn = com.study.Db.get();
+            try (Connection conn = com.study.Db.get()) {
+                // Kiểm tra xem đã block chưa
+                String checkSql = "SELECT id FROM user_blocks WHERE blocker_id = ? AND blocked_id = ?";
+                try (PreparedStatement checkPs = conn.prepareStatement(checkSql)) {
+                    checkPs.setLong(1, userId);
+                    checkPs.setLong(2, blockedUserId);
+                    
+                    try (ResultSet rs = checkPs.executeQuery()) {
+                        if (!rs.next()) {
+                            return Response.status(404)
+                                    .entity(new ErrorResponse(false, "Block not found"))
+                                    .build();
+                        }
+                    }
+                }
 
-            // Kiểm tra xem đã block chưa
-            String checkSql = "SELECT id FROM user_blocks WHERE blocker_id = ? AND blocked_id = ?";
-            PreparedStatement checkPs = conn.prepareStatement(checkSql);
-            checkPs.setLong(1, userId);
-            checkPs.setLong(2, blockedUserId);
-            ResultSet rs = checkPs.executeQuery();
+                // Xóa block
+                String deleteSql = "DELETE FROM user_blocks WHERE blocker_id = ? AND blocked_id = ?";
+                int rowsDeleted;
+                try (PreparedStatement deletePs = conn.prepareStatement(deleteSql)) {
+                    deletePs.setLong(1, userId);
+                    deletePs.setLong(2, blockedUserId);
+                    rowsDeleted = deletePs.executeUpdate();
+                }
 
-            if (!rs.next()) {
-                rs.close();
-                checkPs.close();
-                conn.close();
-                return Response.status(404)
-                        .entity(new ErrorResponse(false, "Block not found"))
-                        .build();
-            }
-            rs.close();
-            checkPs.close();
-
-            // Xóa block
-            String deleteSql = "DELETE FROM user_blocks WHERE blocker_id = ? AND blocked_id = ?";
-            PreparedStatement deletePs = conn.prepareStatement(deleteSql);
-            deletePs.setLong(1, userId);
-            deletePs.setLong(2, blockedUserId);
-            int rowsDeleted = deletePs.executeUpdate();
-            deletePs.close();
-
-            conn.close();
-
-            if (rowsDeleted > 0) {
-                return Response.ok(Map.of(
-                        "success", true,
-                        "message", "User unblocked successfully"
-                )).build();
-            } else {
-                return Response.status(500)
-                        .entity(new ErrorResponse(false, "Failed to unblock user"))
-                        .build();
+                if (rowsDeleted > 0) {
+                    return Response.ok(Map.of(
+                            "success", true,
+                            "message", "User unblocked successfully"
+                    )).build();
+                } else {
+                    return Response.status(500)
+                            .entity(new ErrorResponse(false, "Failed to unblock user"))
+                            .build();
+                }
             }
 
         } catch (SQLException e) {

@@ -1,5 +1,6 @@
 package com.study.friends;
 
+import com.study.AuthUtil;
 import com.study.dto.UserDto;
 import com.study.dto.ErrorResponse;
 import jakarta.ws.rs.*;
@@ -16,7 +17,6 @@ public class FriendsController {
     /**
      * GET /api/friends?q=search_query&limit=50&offset=0
      * Lấy danh sách bạn bè của user hiện tại (từ context/token)
-     * Tạm thời: lấy friends của user_id=1 (hardcode để test)
      */
     @GET
     public Response listFriends(
@@ -26,8 +26,13 @@ public class FriendsController {
             @HeaderParam("Authorization") String token) {
 
         try {
-            // TODO: Parse token để lấy userId thật; tạm dùng userId=1
-            long userId = 1;
+            // Parse token to get actual userId
+            long userId;
+            try {
+                userId = AuthUtil.getUserIdFromToken(token);
+            } catch (IllegalArgumentException e) {
+                return AuthUtil.createUnauthorizedResponse(e.getMessage());
+            }
 
             // Validate input
             limit = Math.min(limit, 100);
@@ -43,32 +48,31 @@ public class FriendsController {
                     (q.isEmpty() ? "" : "AND (u.display_name LIKE ? OR u.email LIKE ?) ") +
                     "LIMIT ? OFFSET ?";
 
-            Connection conn = com.study.Db.get();
-            PreparedStatement ps = conn.prepareStatement(sql);
-            ps.setLong(1, userId);
-            ps.setLong(2, userId);
+            try (Connection conn = com.study.Db.get();
+                 PreparedStatement ps = conn.prepareStatement(sql)) {
+                
+                ps.setLong(1, userId);
+                ps.setLong(2, userId);
 
-            int paramIdx = 3;
-            if (!q.isEmpty()) {
-                String qLike = "%" + q + "%";
-                ps.setString(paramIdx++, qLike);
-                ps.setString(paramIdx++, qLike);
+                int paramIdx = 3;
+                if (!q.isEmpty()) {
+                    String qLike = "%" + q + "%";
+                    ps.setString(paramIdx++, qLike);
+                    ps.setString(paramIdx++, qLike);
+                }
+                ps.setInt(paramIdx++, limit);
+                ps.setInt(paramIdx, offset);
+
+                try (ResultSet rs = ps.executeQuery()) {
+                    while (rs.next()) {
+                        friends.add(new UserDto(
+                                rs.getLong("id"),
+                                rs.getString("email"),
+                                rs.getString("display_name")
+                        ));
+                    }
+                }
             }
-            ps.setInt(paramIdx++, limit);
-            ps.setInt(paramIdx, offset);
-
-            ResultSet rs = ps.executeQuery();
-            while (rs.next()) {
-                friends.add(new UserDto(
-                        rs.getLong("id"),
-                        rs.getString("email"),
-                        rs.getString("display_name")
-                ));
-            }
-
-            rs.close();
-            ps.close();
-            conn.close();
 
             return Response.ok(Map.of(
                     "success", true,
@@ -100,7 +104,13 @@ public class FriendsController {
             @HeaderParam("Authorization") String token) {
 
         try {
-            long userId = 1; // TODO: từ token
+            // Parse token to get actual userId
+            long userId;
+            try {
+                userId = AuthUtil.getUserIdFromToken(token);
+            } catch (IllegalArgumentException e) {
+                return AuthUtil.createUnauthorizedResponse(e.getMessage());
+            }
 
             // Kiểm tra xem có phải bạn bè không
             String sql = "SELECT u.id, u.email, u.display_name FROM users u " +
@@ -109,30 +119,27 @@ public class FriendsController {
                     "  AND ((f.user_id_a = ? AND f.user_id_b = ?) OR (f.user_id_a = ? AND f.user_id_b = ?))" +
                     ")";
 
-            Connection conn = com.study.Db.get();
-            PreparedStatement ps = conn.prepareStatement(sql);
-            ps.setLong(1, friendId);
-            ps.setLong(2, userId);
-            ps.setLong(3, friendId);
-            ps.setLong(4, userId);
-            ps.setLong(5, friendId);
+            try (Connection conn = com.study.Db.get();
+                 PreparedStatement ps = conn.prepareStatement(sql)) {
+                
+                ps.setLong(1, friendId);
+                ps.setLong(2, userId);
+                ps.setLong(3, friendId);
+                // FIX: Swap parameters 4 and 5 to correctly check both directions of friendship
+                ps.setLong(4, friendId);  // was userId
+                ps.setLong(5, userId);    // was friendId
 
-            ResultSet rs = ps.executeQuery();
-            if (rs.next()) {
-                UserDto user = new UserDto(
-                        rs.getLong("id"),
-                        rs.getString("email"),
-                        rs.getString("display_name")
-                );
-                rs.close();
-                ps.close();
-                conn.close();
-                return Response.ok(Map.of("success", true, "data", user)).build();
+                try (ResultSet rs = ps.executeQuery()) {
+                    if (rs.next()) {
+                        UserDto user = new UserDto(
+                                rs.getLong("id"),
+                                rs.getString("email"),
+                                rs.getString("display_name")
+                        );
+                        return Response.ok(Map.of("success", true, "data", user)).build();
+                    }
+                }
             }
-
-            rs.close();
-            ps.close();
-            conn.close();
             return Response.status(404)
                     .entity(new ErrorResponse(false, "Friend not found or not your friend"))
                     .build();
@@ -162,7 +169,13 @@ public class FriendsController {
             @HeaderParam("Authorization") String token) {
 
         try {
-            long userId = 1; // TODO: từ token
+            // Parse token to get actual userId
+            long userId;
+            try {
+                userId = AuthUtil.getUserIdFromToken(token);
+            } catch (IllegalArgumentException e) {
+                return AuthUtil.createUnauthorizedResponse(e.getMessage());
+            }
 
             if (userId == friendId) {
                 return Response.status(400)
@@ -170,51 +183,56 @@ public class FriendsController {
                         .build();
             }
 
-            Connection conn = com.study.Db.get();
+            try (Connection conn = com.study.Db.get()) {
+                conn.setAutoCommit(false);
+                
+                try {
+                    // Kiểm tra xem có phải bạn bè không
+                    String checkSql = "SELECT id FROM friendships WHERE state = 'ACTIVE' " +
+                            "AND ((user_id_a = ? AND user_id_b = ?) OR (user_id_a = ? AND user_id_b = ?))";
+                    try (PreparedStatement checkPs = conn.prepareStatement(checkSql)) {
+                        checkPs.setLong(1, Math.min(userId, friendId));
+                        checkPs.setLong(2, Math.max(userId, friendId));
+                        checkPs.setLong(3, Math.max(userId, friendId));
+                        checkPs.setLong(4, Math.min(userId, friendId));
+                        
+                        try (ResultSet rs = checkPs.executeQuery()) {
+                            if (!rs.next()) {
+                                return Response.status(404)
+                                        .entity(new ErrorResponse(false, "Friendship not found"))
+                                        .build();
+                            }
+                        }
+                    }
 
-            // Kiểm tra xem có phải bạn bè không
-            String checkSql = "SELECT id FROM friendships WHERE state = 'ACTIVE' " +
-                    "AND ((user_id_a = ? AND user_id_b = ?) OR (user_id_a = ? AND user_id_b = ?))";
-            PreparedStatement checkPs = conn.prepareStatement(checkSql);
-            checkPs.setLong(1, Math.min(userId, friendId));
-            checkPs.setLong(2, Math.max(userId, friendId));
-            checkPs.setLong(3, Math.max(userId, friendId));
-            checkPs.setLong(4, Math.min(userId, friendId));
-            ResultSet rs = checkPs.executeQuery();
+                    // Xóa friendship
+                    String deleteSql = "DELETE FROM friendships WHERE state = 'ACTIVE' " +
+                            "AND ((user_id_a = ? AND user_id_b = ?) OR (user_id_a = ? AND user_id_b = ?))";
+                    int rowsDeleted;
+                    try (PreparedStatement deletePs = conn.prepareStatement(deleteSql)) {
+                        deletePs.setLong(1, Math.min(userId, friendId));
+                        deletePs.setLong(2, Math.max(userId, friendId));
+                        deletePs.setLong(3, Math.max(userId, friendId));
+                        deletePs.setLong(4, Math.min(userId, friendId));
+                        rowsDeleted = deletePs.executeUpdate();
+                    }
 
-            if (!rs.next()) {
-                rs.close();
-                checkPs.close();
-                conn.close();
-                return Response.status(404)
-                        .entity(new ErrorResponse(false, "Friendship not found"))
-                        .build();
-            }
-            rs.close();
-            checkPs.close();
-
-            // Xóa friendship
-            String deleteSql = "DELETE FROM friendships WHERE state = 'ACTIVE' " +
-                    "AND ((user_id_a = ? AND user_id_b = ?) OR (user_id_a = ? AND user_id_b = ?))";
-            PreparedStatement deletePs = conn.prepareStatement(deleteSql);
-            deletePs.setLong(1, Math.min(userId, friendId));
-            deletePs.setLong(2, Math.max(userId, friendId));
-            deletePs.setLong(3, Math.max(userId, friendId));
-            deletePs.setLong(4, Math.min(userId, friendId));
-            int rowsDeleted = deletePs.executeUpdate();
-            deletePs.close();
-
-            conn.close();
-
-            if (rowsDeleted > 0) {
-                return Response.ok(Map.of(
-                        "success", true,
-                        "message", "Friend removed successfully"
-                )).build();
-            } else {
-                return Response.status(500)
-                        .entity(new ErrorResponse(false, "Failed to remove friend"))
-                        .build();
+                    if (rowsDeleted > 0) {
+                        conn.commit();
+                        return Response.ok(Map.of(
+                                "success", true,
+                                "message", "Friend removed successfully"
+                        )).build();
+                    } else {
+                        conn.rollback();
+                        return Response.status(500)
+                                .entity(new ErrorResponse(false, "Failed to remove friend"))
+                                .build();
+                    }
+                } catch (SQLException e) {
+                    conn.rollback();
+                    throw e;
+                }
             }
 
         } catch (SQLException e) {
