@@ -266,7 +266,7 @@ public class FriendRequestsController {
                     }
 
                     // Kiểm tra xem đã gửi request chưa
-                    String checkRequestSql = "SELECT id, status FROM friend_requests " +
+                    String checkRequestSql = "SELECT id, status, from_user_id, to_user_id FROM friend_requests " +
                             "WHERE ((from_user_id = ? AND to_user_id = ?) OR (from_user_id = ? AND to_user_id = ?))";
                     try (PreparedStatement checkRequestPs = conn.prepareStatement(checkRequestSql)) {
                         checkRequestPs.setLong(1, userId);

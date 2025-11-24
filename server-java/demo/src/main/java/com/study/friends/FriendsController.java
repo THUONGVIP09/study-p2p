@@ -122,12 +122,15 @@ public class FriendsController {
             try (Connection conn = com.study.Db.get();
                  PreparedStatement ps = conn.prepareStatement(sql)) {
                 
+                // Param 1: friendId for outer WHERE clause
                 ps.setLong(1, friendId);
+                // Params 2-5: Check if friendship exists in either direction
+                // SQL: ((user_id_a = ? AND user_id_b = ?) OR (user_id_a = ? AND user_id_b = ?))
+                // First branch: (user_id_a = userId AND user_id_b = friendId)
                 ps.setLong(2, userId);
                 ps.setLong(3, friendId);
-                // FIX: Check both directions of friendship
-                // First OR: (user_id_a = userId AND user_id_b = friendId)
-                // Second OR: (user_id_a = friendId AND user_id_b = userId)
+                // Second branch: (user_id_a = friendId AND user_id_b = userId)
+                // This checks the reverse direction of the friendship
                 ps.setLong(4, friendId);
                 ps.setLong(5, userId);
 
