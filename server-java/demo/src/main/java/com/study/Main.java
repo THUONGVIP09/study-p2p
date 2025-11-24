@@ -1,10 +1,8 @@
 package com.study;
 
-import org.glassfish.grizzly.http.server.HttpServer;
 import org.glassfish.jersey.grizzly2.httpserver.GrizzlyHttpServerFactory;
 import org.glassfish.jersey.server.ResourceConfig;
 import org.glassfish.jersey.jackson.JacksonFeature;
-import java.io.IOException;
 import java.net.URI;
 import org.glassfish.tyrus.server.Server; // giờ sẽ nhận ra class
 
@@ -22,9 +20,10 @@ public class Main {
                 .register(com.study.friends.FriendRequestsController.class) // Friend Requests
                 .register(com.study.friends.BlockedUsersController.class) // Blocked Users
                 .register(com.study.friends.FindFriendsController.class) // Find Friends
+                .register(com.study.tasks.TasksController.class) // Tasks
         ;
 
-        HttpServer server = GrizzlyHttpServerFactory.createHttpServer(URI.create("http://0.0.0.0:8080/"), rc, true);
+        GrizzlyHttpServerFactory.createHttpServer(URI.create("http://0.0.0.0:8080/"), rc, true);
         Server ws = new Server("0.0.0.0", 8081, "/", null, SignalingEndpoint.class);
         ws.start();
         System.out.println("REST: http://127.0.0.1:8080");
