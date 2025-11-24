@@ -125,9 +125,11 @@ public class FriendsController {
                 ps.setLong(1, friendId);
                 ps.setLong(2, userId);
                 ps.setLong(3, friendId);
-                // FIX: Swap parameters 4 and 5 to correctly check both directions of friendship
-                ps.setLong(4, friendId);  // was userId
-                ps.setLong(5, userId);    // was friendId
+                // FIX: Check both directions of friendship
+                // First OR: (user_id_a = userId AND user_id_b = friendId)
+                // Second OR: (user_id_a = friendId AND user_id_b = userId)
+                ps.setLong(4, friendId);
+                ps.setLong(5, userId);
 
                 try (ResultSet rs = ps.executeQuery()) {
                     if (rs.next()) {

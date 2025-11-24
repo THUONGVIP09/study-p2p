@@ -283,12 +283,22 @@ public class FriendRequestsController {
                                             .build();
                                 } else if ("REJECTED".equals(status) || "CANCELED".equals(status)) {
                                     // Allow re-sending after REJECTED/CANCELED by updating existing request to PENDING
+                                    // Only update status and timestamps, keep original from_user_id and to_user_id
                                     long requestId = requestRs.getLong("id");
-                                    String updateSql = "UPDATE friend_requests SET status = 'PENDING', from_user_id = ?, to_user_id = ?, created_at = NOW(), updated_at = NOW() WHERE id = ?";
+                                    long existingFromUserId = requestRs.getLong("from_user_id");
+                                    long existingToUserId = requestRs.getLong("to_user_id");
+                                    
+                                    // Check if current user was involved in the original request
+                                    if (existingFromUserId != userId && existingToUserId != userId) {
+                                        return Response.status(400)
+                                                .entity(new ErrorResponse(false, "Cannot re-send someone else's friend request"))
+                                                .build();
+                                    }
+                                    
+                                    // Update to PENDING and refresh timestamp, maintaining original direction
+                                    String updateSql = "UPDATE friend_requests SET status = 'PENDING', created_at = NOW(), updated_at = NOW() WHERE id = ?";
                                     try (PreparedStatement updatePs = conn.prepareStatement(updateSql)) {
-                                        updatePs.setLong(1, userId);
-                                        updatePs.setLong(2, toUserId);
-                                        updatePs.setLong(3, requestId);
+                                        updatePs.setLong(1, requestId);
                                         updatePs.executeUpdate();
                                     }
                                     
