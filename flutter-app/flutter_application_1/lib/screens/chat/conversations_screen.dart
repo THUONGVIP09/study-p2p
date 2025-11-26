@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../services/chat_storage_service.dart';
 import '../../services/friends_service.dart';
-import 'chat_connection_setup_screen.dart';
+import 'hybrid_chat_screen.dart';
 
 /// Màn hình chính của Chat - hiển thị tất cả conversations
 /// Giống Messenger, WhatsApp - danh sách các cuộc hội thoại
@@ -150,10 +150,11 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
   void _openChat(Map<String, dynamic> conversation) {
     if (_currentUserId == null) return;
 
+    // Navigate directly to chat (uses AppConfig server IP)
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => ChatConnectionSetupScreen(
+        builder: (context) => HybridChatScreen(
           friendId: conversation['friendId'],
           friendName: conversation['friendName'],
           currentUserId: _currentUserId!,

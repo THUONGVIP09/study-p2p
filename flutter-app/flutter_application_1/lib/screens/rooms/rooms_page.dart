@@ -24,28 +24,57 @@ class _RoomsPageState extends State<RoomsPage> {
   @override
   void initState() {
     super.initState();
-    _loadRooms();
+    _loadUserIdAndRooms();
+  }
+
+  Future<void> _loadUserIdAndRooms() async {
+    try {
+      // Lấy userId từ SharedPreferences
+      final userId = await ApiService.getUserId();
+      if (userId == null) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+                content: Text('Chưa đăng nhập. Vui lòng đăng nhập lại.')),
+          );
+        }
+        return;
+      }
+
+      setState(() {
+        _userId = userId;
+      });
+
+      await _loadRooms();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Lỗi khởi tạo: $e')),
+        );
+      }
+    }
   }
 
   Future<void> _loadRooms() async {
-  try {
-    setState(() => _loading = true);
+    try {
+      setState(() => _loading = true);
 
-    // gọi thẳng, không cần userId nữa
-    final rooms = await _roomService.getAllRooms();
+      // gọi thẳng, không cần userId nữa
+      final rooms = await _roomService.getAllRooms();
 
-    setState(() {
-      _rooms = rooms;
-      _loading = false;
-    });
-  } catch (e) {
-    setState(() => _loading = false);
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Lỗi load rooms: $e')),
-    );
+      setState(() {
+        _rooms = rooms;
+        _loading = false;
+      });
+    } catch (e) {
+      setState(() => _loading = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Lỗi load rooms: $e')),
+        );
+      }
+    }
   }
-}
-
 
   Future<void> _joinCall(Room room) async {
     if (_userId == null) {
@@ -57,8 +86,7 @@ class _RoomsPageState extends State<RoomsPage> {
 
     try {
       // 1. Lấy session mới nhất cho room
-      CallSession? latest =
-          await _callService.getLatestForRoom(room.id);
+      CallSession? latest = await _callService.getLatestForRoom(room.id);
 
       late CallSession session;
 

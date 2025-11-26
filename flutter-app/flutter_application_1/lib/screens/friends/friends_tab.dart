@@ -3,7 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:web_socket_channel/io.dart';
 import 'dart:convert';
 import '../../services/friends_service.dart';
-import '../chat/chat_connection_setup_screen.dart';
+import '../chat/hybrid_chat_screen.dart';
 
 class FriendsTab extends StatefulWidget {
   const FriendsTab({super.key});
@@ -322,12 +322,12 @@ class _FriendsTabState extends State<FriendsTab> {
                                   await SharedPreferences.getInstance();
                               final currentUserId = prefs.getInt('userId') ?? 1;
 
-                              // Navigate to connection setup screen first
+                              // Navigate directly to chat (uses AppConfig server IP)
                               if (!mounted) return;
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
-                                  builder: (_) => ChatConnectionSetupScreen(
+                                  builder: (_) => HybridChatScreen(
                                     friendId: userId,
                                     friendName:
                                         (user['displayName'] ?? 'Friend'),
