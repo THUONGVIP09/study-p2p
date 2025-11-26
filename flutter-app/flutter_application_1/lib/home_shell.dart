@@ -1,14 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_application_1/screens/rooms/rooms_page.dart';
 import 'package:flutter_application_1/screens/friends/friends_screen.dart';
-<<<<<<< HEAD
 import 'call_page.dart';
-=======
 import 'package:flutter_application_1/screens/tasks/tasks_list.dart';
 import 'package:flutter_application_1/screens/chat/p2p_peers_list.dart';
 import 'package:flutter_application_1/widgets/server_ip_indicator.dart';
 // import 'call_page.dart';
->>>>>>> 53c9915b86abf92b6b3278b6d7aa79eba41e0b63
 
 class HomeShell extends StatefulWidget {
   const HomeShell({super.key});
@@ -82,27 +79,7 @@ class _HomeShellState extends State<HomeShell> {
               ),
 
               // Khu vực nội dung trắng (placeholder)
-              Expanded(
-                child: IndexedStack(
-                  index: index,
-                  children: [
-                    const RoomsPage(),
-                    const _PlaceholderPage('Whiteboard'), // Tab 1
-                    const _PlaceholderPage('Calendar'), // Tab 2
-                    const TasksListScreen(), // Tab 3: Tasks
-                    const FriendsScreen(), // Tab 4: Members
-                    const P2PPeersListScreen(), // Tab 5: P2P Chat
-                    const _PlaceholderPage('Tools'), // Tab 6
-                    const _PlaceholderPage('Flags'), // Tab 7
-                  ],
-                ),
-              ),
-            ],
-          ),
-
-<<<<<<< HEAD
-          // Khu vực nội dung trắng (placeholder)
-          Expanded(
+             Expanded(
             child: IndexedStack(
               index: index,
               children: [
@@ -117,10 +94,13 @@ class _HomeShellState extends State<HomeShell> {
               ],
             ),
           ),
-=======
+            ],
+          ),
+
+          // Khu vực nội dung trắng (placeholder)
+          
           // Server IP indicator at bottom right
           const ServerIpIndicator(),
->>>>>>> 53c9915b86abf92b6b3278b6d7aa79eba41e0b63
         ],
       ),
     );

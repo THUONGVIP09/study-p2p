@@ -8,7 +8,7 @@ class ApiService {
   /// Đổi bằng tham số --dart-define=API_BASE=... khi build nếu cần
   static const String baseUrl = String.fromEnvironment(
     'API_BASE',
-    defaultValue: 'http://127.0.0.1:8080',
+    defaultValue: 'http://172.16.0.158:8080',
   );
 
   // ================= AUTH =================
