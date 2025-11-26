@@ -6,8 +6,16 @@ import '../models/room.dart';
 import '../config/app_config.dart';
 
 class ApiService {
+<<<<<<< HEAD
+  /// Đổi bằng tham số --dart-define=API_BASE=... khi build nếu cần
+  static const String baseUrl = String.fromEnvironment(
+    'API_BASE',
+    defaultValue: 'http://172.16.0.108:8080',
+  );
+=======
   /// Sử dụng AppConfig.httpBaseUrl - được set từ ServerConfigScreen
   static String get baseUrl => AppConfig.httpBaseUrl;
+>>>>>>> 00f33300a042632afebf5cfbb6a67d1680dd899a
 
   // ================= AUTH =================
 
