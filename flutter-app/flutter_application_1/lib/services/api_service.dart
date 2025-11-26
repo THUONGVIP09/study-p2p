@@ -3,13 +3,11 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/room.dart';
+import '../config/app_config.dart';
 
 class ApiService {
-  /// Đổi bằng tham số --dart-define=API_BASE=... khi build nếu cần
-  static const String baseUrl = String.fromEnvironment(
-    'API_BASE',
-    defaultValue: 'http://127.0.0.1:8080',
-  );
+  /// Sử dụng AppConfig.httpBaseUrl - được set từ ServerConfigScreen
+  static String get baseUrl => AppConfig.httpBaseUrl;
 
   // ================= AUTH =================
 
@@ -73,6 +71,19 @@ class ApiService {
   static Future<String?> getToken() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getString('token');
+  }
+
+  // Lấy thông tin user theo ID
+  static Future<Map<String, dynamic>> getUserById(int userId) async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/api/users/$userId'),
+    );
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body) as Map<String, dynamic>;
+    } else {
+      throw Exception('User not found');
+    }
   }
 
   static Future<int?> getUserId() async {

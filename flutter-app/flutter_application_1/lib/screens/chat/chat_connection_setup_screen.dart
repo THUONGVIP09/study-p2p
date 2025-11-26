@@ -93,12 +93,12 @@ class _ChatConnectionSetupScreenState extends State<ChatConnectionSetupScreen> {
     });
   }
 
-  void _useMyIp() {
-    if (_myIp != 'Detecting...' && !_myIp.startsWith('Error')) {
-      setState(() {
-        _serverIpController.text = _myIp;
-      });
-    }
+  void _useServerIp() {
+    // Sử dụng server IP đã được config từ ServerConfigScreen
+    final serverIp = AppConfig.currentServerIp;
+    setState(() {
+      _serverIpController.text = serverIp;
+    });
   }
 
   @override
@@ -202,12 +202,12 @@ class _ChatConnectionSetupScreenState extends State<ChatConnectionSetupScreen> {
                         ),
                       ),
                       ElevatedButton.icon(
-                        onPressed: _useMyIp,
-                        icon: const Icon(Icons.wifi, size: 18),
-                        label: const Text('This Machine'),
+                        onPressed: _useServerIp,
+                        icon: const Icon(Icons.cloud, size: 18),
+                        label: const Text('Use Server IP'),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.orange.shade100,
-                          foregroundColor: Colors.orange.shade900,
+                          backgroundColor: Colors.blue.shade100,
+                          foregroundColor: Colors.blue.shade900,
                         ),
                       ),
                     ],
@@ -232,12 +232,12 @@ class _ChatConnectionSetupScreenState extends State<ChatConnectionSetupScreen> {
                             const Divider(),
                             _buildHelpItem(
                               '🌐 Different Machines (LAN)',
-                              'Use: Server\'s LAN IP (e.g., 192.168.1.100)\nFind it on the server machine\'s app',
+                              'Use: Server\'s LAN IP (e.g., 192.168.1.100)\nClick "Use Server IP" to auto-fill',
                             ),
                             const Divider(),
                             _buildHelpItem(
-                              '📡 Server on This Machine',
-                              'Use: $_myIp\nYour IP address shown above',
+                              '📡 Current Server',
+                              'Configured: $_detectedServerIp\nClick "Use Server IP" button',
                             ),
                           ],
                         ),

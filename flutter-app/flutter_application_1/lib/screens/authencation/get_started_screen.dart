@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../../config/app_config.dart';
 import 'server_config_screen.dart';
 
 /// Copy file này vào lib/ và import nơi bạn muốn dùng:
@@ -10,6 +12,11 @@ class GetStartedScreen extends StatelessWidget {
 
   /// TODO: Thay bằng link ảnh minh hoạ của bạn.
   static const String kIllustrationUrl = 'assets/images/get1.png';
+
+  Future<String> _getCurrentServerIp() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString('server_ip') ?? AppConfig.currentServerIp;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -40,6 +47,82 @@ class GetStartedScreen extends StatelessWidget {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
+                    // Server IP Info Card - Ở TRÊN CÙNG
+                    FutureBuilder<String>(
+                      future: _getCurrentServerIp(),
+                      builder: (context, snapshot) {
+                        final serverIp = snapshot.data ?? 'Loading...';
+                        return Card(
+                          color: Colors.white.withOpacity(0.9),
+                          elevation: 2,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Padding(
+                            padding: const EdgeInsets.all(16),
+                            child: Column(
+                              children: [
+                                Row(
+                                  children: [
+                                    Icon(Icons.dns,
+                                        color: Colors.blue.shade700),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            'Server IP',
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              color: Colors.grey.shade600,
+                                              fontWeight: FontWeight.w500,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 4),
+                                          Text(
+                                            serverIp,
+                                            style: const TextStyle(
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.bold,
+                                              color: Colors.black87,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    OutlinedButton.icon(
+                                      onPressed: () {
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (context) =>
+                                                const ServerConfigScreen(),
+                                          ),
+                                        );
+                                      },
+                                      icon: const Icon(Icons.edit, size: 16),
+                                      label: const Text('Change'),
+                                      style: OutlinedButton.styleFrom(
+                                        foregroundColor: Colors.blue.shade700,
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 12,
+                                          vertical: 8,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+
+                    const SizedBox(height: 24),
+
                     Text(
                       'Get started',
                       textAlign: TextAlign.center,
@@ -126,26 +209,6 @@ class GetStartedScreen extends StatelessWidget {
                         ),
                       ),
                       child: const Text('Sign in'),
-                    ),
-
-                    const SizedBox(height: 16),
-
-                    // Server Config Button
-                    OutlinedButton.icon(
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const ServerConfigScreen(),
-                          ),
-                        );
-                      },
-                      icon: const Icon(Icons.settings),
-                      label: const Text('Configure Server'),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: Colors.blue,
-                        minimumSize: const Size(double.infinity, 48),
-                      ),
                     ),
 
                     const SizedBox(height: 8),

@@ -1,17 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_application_1/screens/authencation/initial_config_screen.dart';
 import 'package:flutter_application_1/screens/authencation/get_started_screen.dart';
-import 'package:flutter_application_1/screens/authencation/server_config_screen.dart';
 import 'package:flutter_application_1/screens/authencation/Login/signin_screen.dart';
 import 'package:flutter_application_1/screens/authencation/Sign_up/signup_info_screen.dart';
 import 'package:flutter_application_1/screens/authencation/Sign_up/signup_password_screen.dart';
 import 'home_shell.dart';
 
-void main() async {
+void main() {
   WidgetsFlutterBinding.ensureInitialized();
-
-  // 🗑️ Mỗi user có file riêng - không cần xóa nữa
-  // await ChatStorageService.deleteStorageFile(userId);
-
   runApp(const MyApp());
 }
 
@@ -27,7 +23,7 @@ class MyApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         useMaterial3: true,
       ),
-      home: const GetStartedScreen(),
+      home: const InitialConfigScreen(), // Check config lần đầu
 
       // Các route bình thường (không cần hiệu ứng custom)
       routes: {
