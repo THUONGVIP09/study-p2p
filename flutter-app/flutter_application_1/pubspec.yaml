@@ -17,6 +17,8 @@ dependencies:
   web_socket_channel: ^3.0.3
   agora_rtc_engine: ^6.2.0   # hoặc version mới nhất trên pub.dev
   permission_handler: ^11.0.0
+  path_provider: ^2.1.1      # For local file storage
+  network_info_plus: ^5.0.0  # For getting device IP
 
 dev_dependencies:
   flutter_test:

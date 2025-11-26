@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../services/friends_service.dart';
+import '../chat/hybrid_chat_screen.dart';
 
 class FriendsTab extends StatefulWidget {
   const FriendsTab({super.key});
@@ -176,16 +177,15 @@ class _FriendsTabState extends State<FriendsTab> {
                                   if (mounted) {
                                     ScaffoldMessenger.of(context).showSnackBar(
                                       const SnackBar(
-                                          content:
-                                              Text('Friend removed successfully')),
+                                          content: Text(
+                                              'Friend removed successfully')),
                                     );
                                     _loadFriends();
                                   }
                                 } catch (e) {
                                   if (mounted) {
                                     ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                          content: Text('Error: $e')),
+                                      SnackBar(content: Text('Error: $e')),
                                     );
                                   }
                                 }
@@ -218,23 +218,32 @@ class _FriendsTabState extends State<FriendsTab> {
                                   if (mounted) {
                                     ScaffoldMessenger.of(context).showSnackBar(
                                       const SnackBar(
-                                          content: Text('User blocked successfully')),
+                                          content: Text(
+                                              'User blocked successfully')),
                                     );
                                     _loadFriends();
                                   }
                                 } catch (e) {
                                   if (mounted) {
                                     ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                          content: Text('Error: $e')),
+                                      SnackBar(content: Text('Error: $e')),
                                     );
                                   }
                                 }
                               }
                             } else if (value == 'message') {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                    content: Text('Message feature coming soon')),
+                              // Navigate directly to HybridChatScreen for chatting with this friend
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => HybridChatScreen(
+                                    friendId: userId,
+                                    friendName:
+                                        (user['displayName'] ?? 'Friend'),
+                                    currentUserId:
+                                        1, // TODO: replace with real logged-in user id
+                                  ),
+                                ),
                               );
                             }
                           },

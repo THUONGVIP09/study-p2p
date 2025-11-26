@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_application_1/screens/rooms/rooms_page.dart';
 import 'package:flutter_application_1/screens/friends/friends_screen.dart';
 import 'package:flutter_application_1/screens/tasks/tasks_list.dart';
+import 'package:flutter_application_1/screens/chat/p2p_peers_list.dart';
 // import 'call_page.dart';
 
 class HomeShell extends StatefulWidget {
@@ -82,7 +83,7 @@ class _HomeShellState extends State<HomeShell> {
                 const _PlaceholderPage('Calendar'), // Tab 2
                 const TasksListScreen(), // Tab 3: Tasks
                 const FriendsScreen(), // Tab 4: Members
-                const _PlaceholderPage('Chat'), // Tab 5
+                const P2PPeersListScreen(), // Tab 5: P2P Chat
                 const _PlaceholderPage('Tools'), // Tab 6
                 const _PlaceholderPage('Flags'), // Tab 7
               ],
