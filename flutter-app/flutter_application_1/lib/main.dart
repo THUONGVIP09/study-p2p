@@ -4,11 +4,14 @@ import 'package:flutter_application_1/screens/authencation/Login/signin_screen.d
 import 'package:flutter_application_1/screens/authencation/Sign_up/signup_info_screen.dart';
 import 'package:flutter_application_1/screens/authencation/Sign_up/signup_password_screen.dart';
 import 'home_shell.dart';
-  
-void main() {
+
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // 🗑️ Mỗi user có file riêng - không cần xóa nữa
+  // await ChatStorageService.deleteStorageFile(userId);
+
   runApp(const MyApp());
-  
 }
 
 class MyApp extends StatelessWidget {
@@ -79,4 +82,3 @@ Route _smoothRoute(Widget page, RouteSettings settings) {
 }
 
 // Tạm cho /home - sau thay bằng room_list_screen.dart
-

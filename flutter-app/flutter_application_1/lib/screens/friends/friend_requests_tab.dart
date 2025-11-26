@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_application_1/services/friends_service.dart';
+import '../../services/friends_service.dart';
 
 class FriendRequestsTab extends StatefulWidget {
   const FriendRequestsTab({super.key});
@@ -94,35 +94,68 @@ class _FriendRequestsTabState extends State<FriendRequestsTab> {
               itemCount: requests.length,
               itemBuilder: (context, index) {
                 final req = requests[index];
-                final name = req['displayName'] ?? req['name'] ?? 'Unknown';
+                final name = req['fromUserName'] ?? req['displayName'] ?? 'Unknown';
+                final status = req['status'] ?? 'PENDING';
+                final createdAt = req['createdAt'] ?? '';
                 return Card(
                   margin:
                       const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   child: ListTile(
                     leading: CircleAvatar(child: Text(name[0])),
                     title: Text(name),
-                    subtitle:
-                        Text(req['message'] ?? 'Sent you a friend request'),
+                    subtitle: Text(createdAt.isNotEmpty
+                        ? 'Sent at $createdAt'
+                        : 'Sent you a friend request'),
                     trailing: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         IconButton(
                           icon: const Icon(Icons.check_circle,
                               color: Colors.green),
-                          onPressed: () {
-                            // TODO: Accept request
-                            ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                    content: Text('Accept not implemented')));
+                          onPressed: () async {
+                            final requestId = req['id'] as int;
+                            try {
+                              await FriendsService.acceptFriendRequest(
+                                  requestId);
+                              if (mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                      content: Text(
+                                          'Friend request accepted')),
+                                );
+                                _loadRequests();
+                              }
+                            } catch (e) {
+                              if (mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text('Error: $e')),
+                                );
+                              }
+                            }
                           },
                         ),
                         IconButton(
                           icon: const Icon(Icons.cancel, color: Colors.red),
-                          onPressed: () {
-                            // TODO: Reject request
-                            ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                    content: Text('Reject not implemented')));
+                          onPressed: () async {
+                            final requestId = req['id'] as int;
+                            try {
+                              await FriendsService.rejectFriendRequest(
+                                  requestId);
+                              if (mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                      content: Text(
+                                          'Friend request rejected')),
+                                );
+                                _loadRequests();
+                              }
+                            } catch (e) {
+                              if (mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text('Error: $e')),
+                                );
+                              }
+                            }
                           },
                         ),
                       ],

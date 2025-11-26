@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:web_socket_channel/io.dart';
+import 'dart:convert';
 import '../../services/friends_service.dart';
+import '../chat/chat_connection_setup_screen.dart';
 
 class FriendsTab extends StatefulWidget {
   const FriendsTab({super.key});
@@ -14,10 +18,53 @@ class _FriendsTabState extends State<FriendsTab> {
   bool isLoading = false;
   String? errorMessage;
 
+  // Online status tracking
+  final Map<int, bool> _onlineStatus = {};
+  IOWebSocketChannel? _onlineListChannel;
   @override
   void initState() {
     super.initState();
     _loadFriends();
+    _subscribeToOnlineList();
+  }
+
+  void _subscribeToOnlineList() {
+    try {
+      // Connect to online list broadcast WebSocket
+      _onlineListChannel = IOWebSocketChannel.connect(
+        Uri.parse('ws://127.0.0.1:8082/chat-online-list'),
+      );
+
+      // Listen for online peer updates
+      _onlineListChannel!.stream.listen((data) {
+        try {
+          final msg = jsonDecode(data);
+          if (msg['type'] == 'ONLINE_LIST') {
+            final peers = msg['peers'] as List;
+            if (mounted) {
+              setState(() {
+                // Reset all to offline first
+                _onlineStatus.clear();
+
+                // Mark online peers
+                for (var peer in peers) {
+                  final userId = peer['userId'];
+                  if (userId != null) {
+                    _onlineStatus[userId] = true;
+                  }
+                }
+              });
+            }
+          }
+        } catch (e) {
+          debugPrint('Error parsing online list: $e');
+        }
+      }, onError: (error) {
+        debugPrint('Online list WebSocket error: $error');
+      });
+    } catch (e) {
+      debugPrint('Failed to subscribe to online list: $e');
+    }
   }
 
   Future<void> _loadFriends({String query = ''}) async {
@@ -106,6 +153,9 @@ class _FriendsTabState extends State<FriendsTab> {
               itemCount: filteredFriends.length,
               itemBuilder: (context, index) {
                 final user = filteredFriends[index];
+                final userId = user['id'] as int;
+                final isOnline = _onlineStatus[userId] ?? false;
+
                 return Card(
                   margin:
                       const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -113,11 +163,32 @@ class _FriendsTabState extends State<FriendsTab> {
                     padding: const EdgeInsets.all(8.0),
                     child: Row(
                       children: [
-                        // Avatar
-                        CircleAvatar(
-                          child: Text(
-                            (user['displayName'] ?? 'U')[0].toUpperCase(),
-                          ),
+                        // Avatar with online indicator
+                        Stack(
+                          children: [
+                            CircleAvatar(
+                              child: Text(
+                                (user['displayName'] ?? 'U')[0].toUpperCase(),
+                              ),
+                            ),
+                            // Online status indicator (chấm xanh/xám)
+                            Positioned(
+                              right: 0,
+                              bottom: 0,
+                              child: Container(
+                                width: 12,
+                                height: 12,
+                                decoration: BoxDecoration(
+                                  color: isOnline ? Colors.green : Colors.grey,
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                    color: Colors.white,
+                                    width: 2,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                         const SizedBox(width: 12),
 
@@ -126,12 +197,27 @@ class _FriendsTabState extends State<FriendsTab> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(
-                                user['displayName'] ?? 'Unknown',
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 14,
-                                ),
+                              Row(
+                                children: [
+                                  Text(
+                                    user['displayName'] ?? 'Unknown',
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 6),
+                                  // Online status text
+                                  Text(
+                                    isOnline ? 'online' : 'offline',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      color:
+                                          isOnline ? Colors.green : Colors.grey,
+                                      fontStyle: FontStyle.italic,
+                                    ),
+                                  ),
+                                ],
                               ),
                               Text(
                                 user['email'] ?? '',
@@ -144,13 +230,112 @@ class _FriendsTabState extends State<FriendsTab> {
                           ),
                         ),
 
-                        // Action button (placeholder)
+                        // Action button
                         PopupMenuButton<String>(
-                          onSelected: (value) {
-                            // TODO: Implement actions (message, remove friend, block, etc.)
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text('Action: $value')),
-                            );
+                          onSelected: (value) async {
+                            final userId = user['id'] as int;
+                            if (value == 'remove') {
+                              // Show confirmation dialog
+                              final confirmed = await showDialog<bool>(
+                                context: context,
+                                builder: (ctx) => AlertDialog(
+                                  title: const Text('Remove Friend'),
+                                  content: const Text(
+                                      'Are you sure you want to remove this friend?'),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () =>
+                                          Navigator.pop(ctx, false),
+                                      child: const Text('Cancel'),
+                                    ),
+                                    TextButton(
+                                      onPressed: () => Navigator.pop(ctx, true),
+                                      child: const Text('Remove'),
+                                    ),
+                                  ],
+                                ),
+                              );
+
+                              if (confirmed == true) {
+                                try {
+                                  await FriendsService.removeFriend(userId);
+                                  if (mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                          content: Text(
+                                              'Friend removed successfully')),
+                                    );
+                                    _loadFriends();
+                                  }
+                                } catch (e) {
+                                  if (mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(content: Text('Error: $e')),
+                                    );
+                                  }
+                                }
+                              }
+                            } else if (value == 'block') {
+                              // Show confirmation dialog
+                              final confirmed = await showDialog<bool>(
+                                context: context,
+                                builder: (ctx) => AlertDialog(
+                                  title: const Text('Block User'),
+                                  content: const Text(
+                                      'Are you sure you want to block this user? This will remove them from your friends list and delete any pending friend requests.'),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () =>
+                                          Navigator.pop(ctx, false),
+                                      child: const Text('Cancel'),
+                                    ),
+                                    TextButton(
+                                      onPressed: () => Navigator.pop(ctx, true),
+                                      child: const Text('Block'),
+                                    ),
+                                  ],
+                                ),
+                              );
+
+                              if (confirmed == true) {
+                                try {
+                                  await FriendsService.blockUser(userId);
+                                  if (mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                          content: Text(
+                                              'User blocked successfully')),
+                                    );
+                                    _loadFriends();
+                                  }
+                                } catch (e) {
+                                  if (mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(content: Text('Error: $e')),
+                                    );
+                                  }
+                                }
+                              }
+                            } else if (value == 'message') {
+                              // Get current user ID from SharedPreferences
+                              final prefs =
+                                  await SharedPreferences.getInstance();
+                              final currentUserId = prefs.getInt('userId') ?? 1;
+
+                              // Navigate to connection setup screen first
+                              if (!mounted) return;
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => ChatConnectionSetupScreen(
+                                    friendId: userId,
+                                    friendName:
+                                        (user['displayName'] ?? 'Friend'),
+                                    currentUserId: currentUserId,
+                                  ),
+                                ),
+                              );
+                            }
                           },
                           itemBuilder: (BuildContext context) => [
                             const PopupMenuItem(
@@ -180,6 +365,7 @@ class _FriendsTabState extends State<FriendsTab> {
 
   @override
   void dispose() {
+    _onlineListChannel?.sink.close();
     searchCtrl.dispose();
     super.dispose();
   }

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_application_1/services/friends_service.dart';
+import '../../services/friends_service.dart';
 
 class BlockedUsersTab extends StatefulWidget {
   const BlockedUsersTab({super.key});
@@ -93,12 +93,49 @@ class _BlockedUsersTabState extends State<BlockedUsersTab> {
                 return ListTile(
                   leading: CircleAvatar(child: Text(name[0])),
                   title: Text(name),
+                  subtitle: Text(user['email'] ?? ''),
                   trailing: TextButton(
                     child: const Text('Unblock'),
-                    onPressed: () {
-                      // TODO: Unblock user
-                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                          content: Text('Unblock not implemented')));
+                    onPressed: () async {
+                      // Show confirmation dialog
+                      final confirmed = await showDialog<bool>(
+                        context: context,
+                        builder: (ctx) => AlertDialog(
+                          title: const Text('Unblock User'),
+                          content: const Text(
+                              'Are you sure you want to unblock this user?'),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(ctx, false),
+                              child: const Text('Cancel'),
+                            ),
+                            TextButton(
+                              onPressed: () => Navigator.pop(ctx, true),
+                              child: const Text('Unblock'),
+                            ),
+                          ],
+                        ),
+                      );
+
+                      if (confirmed == true) {
+                        final userId = user['id'] as int;
+                        try {
+                          await FriendsService.unblockUser(userId);
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                  content: Text('User unblocked successfully')),
+                            );
+                            _loadBlocked();
+                          }
+                        } catch (e) {
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('Error: $e')),
+                            );
+                          }
+                        }
+                      }
                     },
                   ),
                 );

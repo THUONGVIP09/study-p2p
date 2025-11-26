@@ -1,7 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_application_1/screens/rooms/rooms_page.dart';
 import 'package:flutter_application_1/screens/friends/friends_screen.dart';
+<<<<<<< HEAD
 import 'call_page.dart';
+=======
+import 'package:flutter_application_1/screens/tasks/tasks_list.dart';
+import 'package:flutter_application_1/screens/chat/p2p_peers_list.dart';
+import 'package:flutter_application_1/widgets/server_ip_indicator.dart';
+// import 'call_page.dart';
+>>>>>>> 53c9915b86abf92b6b3278b6d7aa79eba41e0b63
 
 class HomeShell extends StatefulWidget {
   const HomeShell({super.key});
@@ -16,13 +23,13 @@ class _HomeShellState extends State<HomeShell> {
   // Danh sách tab (icon gần giống ảnh)
   final tabs = <_TabItem>[
     _TabItem(icon: Icons.videocam_off_rounded, label: 'Call'),
-    _TabItem(icon: Icons.brush_rounded,        label: 'Whiteboard'),
-    _TabItem(icon: Icons.event_rounded,        label: 'Calendar'),
-    _TabItem(icon: Icons.description_rounded,  label: 'Notes'),
-    _TabItem(icon: Icons.group_rounded,        label: 'Members'),
-    _TabItem(icon: Icons.chat_bubble_rounded,  label: 'Chat'),
-    _TabItem(icon: Icons.format_color_fill,    label: 'Tools'),
-    _TabItem(icon: Icons.flag_rounded,         label: 'Flags'),
+    _TabItem(icon: Icons.brush_rounded, label: 'Whiteboard'),
+    _TabItem(icon: Icons.event_rounded, label: 'Calendar'),
+    _TabItem(icon: Icons.description_rounded, label: 'Notes'),
+    _TabItem(icon: Icons.group_rounded, label: 'Members'),
+    _TabItem(icon: Icons.chat_bubble_rounded, label: 'Chat'),
+    _TabItem(icon: Icons.format_color_fill, label: 'Tools'),
+    _TabItem(icon: Icons.flag_rounded, label: 'Flags'),
   ];
 
   // Ba nút mờ phía dưới (chưa active)
@@ -35,41 +42,65 @@ class _HomeShellState extends State<HomeShell> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Row(
+      body: Stack(
         children: [
-          NavigationRail(
-            selectedIndex: index,
-            onDestinationSelected: (i) => setState(() => index = i),
-            labelType: NavigationRailLabelType.none,
-            minWidth: 72,
-            backgroundColor: const Color(0xFF1E1B1D), // nền tối giống ảnh
-            selectedIconTheme: const IconThemeData(color: Color(0xFFE68AF7)),
-            unselectedIconTheme: const IconThemeData(color: Colors.white),
+          Row(
+            children: [
+              NavigationRail(
+                selectedIndex: index,
+                onDestinationSelected: (i) => setState(() => index = i),
+                labelType: NavigationRailLabelType.none,
+                minWidth: 72,
+                backgroundColor: const Color(0xFF1E1B1D), // nền tối giống ảnh
+                selectedIconTheme:
+                    const IconThemeData(color: Color(0xFFE68AF7)),
+                unselectedIconTheme: const IconThemeData(color: Colors.white),
 
-            leading: const SizedBox(height: 8),
-            destinations: [
-              for (final t in tabs)
-                NavigationRailDestination(
-                  icon: Icon(t.icon),
-                  selectedIcon: Icon(t.icon),
-                  label: Text(t.label),
+                leading: const SizedBox(height: 8),
+                destinations: [
+                  for (final t in tabs)
+                    NavigationRailDestination(
+                      icon: Icon(t.icon),
+                      selectedIcon: Icon(t.icon),
+                      label: Text(t.label),
+                    ),
+                ],
+
+                // nhóm các icon mờ ở đáy
+                trailing: Column(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    const SizedBox(height: 16),
+                    for (final w in trailing)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                        child: w,
+                      ),
+                    const SizedBox(height: 16),
+                  ],
                 ),
+              ),
+
+              // Khu vực nội dung trắng (placeholder)
+              Expanded(
+                child: IndexedStack(
+                  index: index,
+                  children: [
+                    const RoomsPage(),
+                    const _PlaceholderPage('Whiteboard'), // Tab 1
+                    const _PlaceholderPage('Calendar'), // Tab 2
+                    const TasksListScreen(), // Tab 3: Tasks
+                    const FriendsScreen(), // Tab 4: Members
+                    const P2PPeersListScreen(), // Tab 5: P2P Chat
+                    const _PlaceholderPage('Tools'), // Tab 6
+                    const _PlaceholderPage('Flags'), // Tab 7
+                  ],
+                ),
+              ),
             ],
-
-            // nhóm các icon mờ ở đáy
-            trailing: Column(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                const SizedBox(height: 16),
-                for (final w in trailing) Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 10),
-                  child: w,
-                ),
-                const SizedBox(height: 16),
-              ],
-            ),
           ),
 
+<<<<<<< HEAD
           // Khu vực nội dung trắng (placeholder)
           Expanded(
             child: IndexedStack(
@@ -86,6 +117,10 @@ class _HomeShellState extends State<HomeShell> {
               ],
             ),
           ),
+=======
+          // Server IP indicator at bottom right
+          const ServerIpIndicator(),
+>>>>>>> 53c9915b86abf92b6b3278b6d7aa79eba41e0b63
         ],
       ),
     );
@@ -106,6 +141,7 @@ class _DisabledIcon extends StatelessWidget {
     return Icon(icon, color: Colors.white38, size: 26);
   }
 }
+
 class _PlaceholderPage extends StatelessWidget {
   final String title;
   const _PlaceholderPage(this.title, {super.key});
@@ -114,7 +150,8 @@ class _PlaceholderPage extends StatelessWidget {
     return Scaffold(
       backgroundColor: Colors.white,
       body: Center(
-        child: Text(title, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w600)),
+        child: Text(title,
+            style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w600)),
       ),
     );
   }

@@ -105,27 +105,24 @@ class ApiService {
   /// Lấy danh sách phòng mà user đang tham gia
   /// map với GET /api/rooms?userId=...
   static Future<List<Room>> fetchRooms() async {
-  final headers = await _authHeaders();
-  final uri = Uri.parse('$baseUrl/api/rooms');
+    final headers = await _authHeaders();
+    final uri = Uri.parse('$baseUrl/api/rooms');
 
-  final res = await http.get(uri, headers: headers);
-  final rawBody = utf8.decode(res.bodyBytes);
+    final res = await http.get(uri, headers: headers);
+    final rawBody = utf8.decode(res.bodyBytes);
 
-  // log cho chắc, mở console lên coi
-  print('GET /api/rooms status=${res.statusCode} body=$rawBody');
+    // log cho chắc, mở console lên coi
+    print('GET /api/rooms status=${res.statusCode} body=$rawBody');
 
-  final payload = _safeJson(rawBody);
+    final payload = _safeJson(rawBody);
 
-  if (res.statusCode != 200 || payload['success'] != true) {
-    throw Exception(payload['message'] ?? 'Lấy danh sách phòng thất bại');
+    if (res.statusCode != 200 || payload['success'] != true) {
+      throw Exception(payload['message'] ?? 'Lấy danh sách phòng thất bại');
+    }
+
+    final List<dynamic> data = payload['data'] ?? [];
+    return data.map((e) => Room.fromJson(e as Map<String, dynamic>)).toList();
   }
-
-  final List<dynamic> data = payload['data'] ?? [];
-  return data
-      .map((e) => Room.fromJson(e as Map<String, dynamic>))
-      .toList();
-}
-
 
   /// Tạo phòng mới – POST /api/rooms
   static Future<Room> createRoom({
@@ -153,11 +150,12 @@ class ApiService {
       'createdBy': uid,
     };
 
-    final res =
-        await http.post(uri, headers: headers, body: jsonEncode(body));
+    final res = await http.post(uri, headers: headers, body: jsonEncode(body));
     final payload = _safeJson(utf8.decode(res.bodyBytes));
 
-    if (res.statusCode < 200 || res.statusCode >= 300 || payload['success'] != true) {
+    if (res.statusCode < 200 ||
+        res.statusCode >= 300 ||
+        payload['success'] != true) {
       throw Exception(payload['message'] ?? 'Tạo phòng thất bại');
     }
 
@@ -184,14 +182,188 @@ class ApiService {
       'passcode': passcode,
     };
 
-    final res =
-        await http.post(uri, headers: headers, body: jsonEncode(body));
+    final res = await http.post(uri, headers: headers, body: jsonEncode(body));
     final payload = _safeJson(utf8.decode(res.bodyBytes));
 
-    if (res.statusCode < 200 || res.statusCode >= 300 || payload['success'] != true) {
+    if (res.statusCode < 200 ||
+        res.statusCode >= 300 ||
+        payload['success'] != true) {
       throw Exception(payload['message'] ?? 'Join phòng thất bại');
     }
 
     return Room.fromJson(payload['data'] as Map<String, dynamic>);
+  }
+
+  // ================= NOTES =================
+
+  /// Lấy danh sách notes của user
+  static Future<List<Map<String, dynamic>>> fetchNotes() async {
+    final headers = await _authHeaders();
+    final uri = Uri.parse('$baseUrl/api/notes');
+
+    final res = await http.get(uri, headers: headers);
+    final rawBody = utf8.decode(res.bodyBytes);
+    final payload = _safeJson(rawBody);
+
+    if (res.statusCode != 200 || payload['success'] != true) {
+      throw Exception(payload['message'] ?? 'Lấy notes thất bại');
+    }
+
+    final List<dynamic> data = payload['data'] ?? [];
+    return data.map((e) => e as Map<String, dynamic>).toList();
+  }
+
+  /// Tạo note mới
+  static Future<int> createNote(
+      {required String title, String? content}) async {
+    final headers = await _authHeaders();
+    final uri = Uri.parse('$baseUrl/api/notes');
+
+    final body = {
+      'title': title,
+      'content': content ?? '',
+    };
+
+    final res = await http.post(uri, headers: headers, body: jsonEncode(body));
+    final payload = _safeJson(utf8.decode(res.bodyBytes));
+    if (res.statusCode < 200 ||
+        res.statusCode >= 300 ||
+        payload['success'] != true) {
+      throw Exception(payload['message'] ?? 'Tạo note thất bại');
+    }
+
+    return (payload['data']?['id'] as int?) ?? -1;
+  }
+
+  /// Cập nhật note
+  static Future<void> updateNote(
+      {required int id, required String title, String? content}) async {
+    final headers = await _authHeaders();
+    final uri = Uri.parse('$baseUrl/api/notes/$id');
+
+    final body = {
+      'title': title,
+      'content': content ?? '',
+    };
+
+    final res = await http.put(uri, headers: headers, body: jsonEncode(body));
+    final payload = _safeJson(utf8.decode(res.bodyBytes));
+    if (res.statusCode < 200 ||
+        res.statusCode >= 300 ||
+        payload['success'] != true) {
+      throw Exception(payload['message'] ?? 'Cập nhật note thất bại');
+    }
+  }
+
+  /// Xóa note
+  static Future<void> deleteNote({required int id}) async {
+    final headers = await _authHeaders();
+    final uri = Uri.parse('$baseUrl/api/notes/$id');
+
+    final res = await http.delete(uri, headers: headers);
+    final payload = _safeJson(utf8.decode(res.bodyBytes));
+    if (res.statusCode < 200 ||
+        res.statusCode >= 300 ||
+        payload['success'] != true) {
+      throw Exception(payload['message'] ?? 'Xóa note thất bại');
+    }
+  }
+
+  // ================= TASKS =================
+
+  /// Lấy danh sách task của user
+  static Future<List<Map<String, dynamic>>> fetchTasks() async {
+    final headers = await _authHeaders();
+    final uri = Uri.parse('$baseUrl/api/tasks');
+
+    final res = await http.get(uri, headers: headers);
+    final rawBody = utf8.decode(res.bodyBytes);
+    final payload = _safeJson(rawBody);
+
+    if (res.statusCode != 200 || payload['success'] != true) {
+      throw Exception(payload['message'] ?? 'Lấy tasks thất bại');
+    }
+
+    final List<dynamic> data = payload['data'] ?? [];
+    return data.map((e) => e as Map<String, dynamic>).toList();
+  }
+
+  /// Tạo task mới
+  static Future<int> createTask({
+    required String title,
+    String? description,
+    String? dueDate, // yyyy-MM-dd
+    String repeatRule = 'NONE',
+    String status = 'TODO',
+    int? priority,
+  }) async {
+    final headers = await _authHeaders();
+    final uri = Uri.parse('$baseUrl/api/tasks');
+
+    final body = {
+      'title': title,
+      'description': description,
+      'due_date': dueDate,
+      'repeat_rule': repeatRule,
+      'status': status,
+      'priority': priority,
+    };
+
+    final res = await http.post(uri, headers: headers, body: jsonEncode(body));
+    final payload = _safeJson(utf8.decode(res.bodyBytes));
+    if (res.statusCode < 200 ||
+        res.statusCode >= 300 ||
+        payload['success'] != true) {
+      throw Exception(payload['message'] ?? 'Tạo task thất bại');
+    }
+
+    return (payload['data']?['id'] as int?) ?? -1;
+  }
+
+  /// Cập nhật task
+  static Future<void> updateTask({
+    required int id,
+    String? title,
+    String? description,
+    String? dueDate,
+    String? repeatRule,
+    String? status,
+    int? priority,
+    String? completedAt,
+  }) async {
+    final headers = await _authHeaders();
+    final uri = Uri.parse('$baseUrl/api/tasks/$id');
+
+    final body = {
+      if (title != null) 'title': title,
+      if (description != null) 'description': description,
+      if (dueDate != null) 'due_date': dueDate,
+      if (repeatRule != null) 'repeat_rule': repeatRule,
+      if (status != null) 'status': status,
+      if (priority != null) 'priority': priority,
+      if (completedAt != null) 'completed_at': completedAt,
+    };
+
+    final res = await http.put(uri, headers: headers, body: jsonEncode(body));
+    final payload = _safeJson(utf8.decode(res.bodyBytes));
+    if (res.statusCode < 200 ||
+        res.statusCode >= 300 ||
+        payload['success'] != true) {
+      throw Exception(payload['message'] ?? 'Cập nhật task thất bại');
+    }
+  }
+
+  /// Xóa task
+  static Future<void> deleteTask({required int id}) async {
+    final headers = await _authHeaders();
+    final uri = Uri.parse('$baseUrl/api/tasks/$id');
+
+    final res = await http.delete(uri, headers: headers);
+    final payload = _safeJson(utf8.decode(res.bodyBytes));
+    if (res.statusCode < 200 ||
+        res.statusCode >= 300 ||
+        payload['success'] != true) {
+      throw Exception(payload['message'] ?? 'Xóa task thất bại');
+    }
   }
 }

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_application_1/services/friends_service.dart';
+import '../../services/friends_service.dart';
 
 class FindFriendsTab extends StatefulWidget {
   const FindFriendsTab({super.key});
@@ -99,17 +99,48 @@ class _FindFriendsTabState extends State<FindFriendsTab> {
               itemBuilder: (context, index) {
                 final user = users[index];
                 final name = user['displayName'] ?? user['name'] ?? 'Unknown';
+                final relationshipStatus =
+                    user['relationshipStatus'] ?? 'NONE';
                 return ListTile(
                   leading: CircleAvatar(child: Text(name[0])),
                   title: Text(name),
-                  trailing: ElevatedButton(
-                    child: const Text('Add'),
-                    onPressed: () {
-                      // TODO: send friend request
-                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                          content: Text('Send request not implemented')));
-                    },
-                  ),
+                  subtitle: Text(user['email'] ?? ''),
+                  trailing: relationshipStatus == 'PENDING'
+                      ? const Chip(
+                          label: Text('Pending'),
+                          backgroundColor: Colors.orange,
+                        )
+                      : relationshipStatus == 'BLOCKED'
+                          ? const Chip(
+                              label: Text('Blocked'),
+                              backgroundColor: Colors.red,
+                            )
+                          : ElevatedButton(
+                              child: const Text('Add'),
+                              onPressed: () async {
+                                final userId = user['id'] as int;
+                                try {
+                                  await FriendsService.sendFriendRequest(
+                                      userId);
+                                  if (mounted) {
+                                    ScaffoldMessenger.of(context)
+                                        .showSnackBar(
+                                      const SnackBar(
+                                          content: Text(
+                                              'Friend request sent successfully')),
+                                    );
+                                    _search(searchCtrl.text);
+                                  }
+                                } catch (e) {
+                                  if (mounted) {
+                                    ScaffoldMessenger.of(context)
+                                        .showSnackBar(
+                                      SnackBar(content: Text('Error: $e')),
+                                    );
+                                  }
+                                }
+                              },
+                            ),
                 );
               },
             ),

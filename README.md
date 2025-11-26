@@ -10,8 +10,9 @@
 - Tạo/tham gia phòng học ảo  
 - Video call P2P (WebRTC)  
 - Chat nhóm real-time  
-- **AI tóm tắt chat tự động** (Python local)  
--** Module AI (Hoài Thương) 
+- **AI tóm tắt chat tự động** (Python local)
+- **✅ Quản lý bạn bè (Friend Management)** - HOÀN THÀNH
+- Module AI (Hoài Thương) 
 
 ## Tech Stack
 | Layer | Công nghệ |
@@ -90,6 +91,29 @@ Sau đó test các chức năng: Đăng ký / Đăng nhập
 Nếu đăng ký thành công → server log hiển thị email bạn nhập.
 
 Nếu sai email hoặc trùng → server trả lỗi JSON tương ứng.
+
+## 🎯 Friend Feature (Chức Năng Bạn Bè) - HOÀN THÀNH ✅
+
+Chức năng quản lý bạn bè đã được hoàn thiện với đầy đủ tính năng:
+
+### Tính Năng
+- ✅ **Tìm kiếm và kết bạn** - Tìm người dùng mới và gửi lời mời
+- ✅ **Quản lý lời mời** - Chấp nhận/từ chối lời mời kết bạn
+- ✅ **Quản lý bạn bè** - Xem danh sách, xóa bạn bè
+- ✅ **Chặn người dùng** - Chặn/bỏ chặn với xác nhận
+
+### Documentation
+- 📖 [FRIEND_MANAGEMENT_API.md](FRIEND_MANAGEMENT_API.md) - API Specification
+- 📖 [FRIEND_FEATURE_GUIDE.md](FRIEND_FEATURE_GUIDE.md) - User Guide
+- 📖 [FRIEND_FEATURE_TESTING.md](FRIEND_FEATURE_TESTING.md) - Testing Guide  
+- 📖 [FRIEND_FEATURE_SUMMARY.md](FRIEND_FEATURE_SUMMARY.md) - Implementation Summary
+
+### Quick Start
+```bash
+# Backend đã bao gồm Friend controllers
+# Frontend có 4 tabs: Friends, Friend Requests, Blocked Users, Find Friends
+# Sử dụng ngay sau khi chạy backend + frontend theo hướng dẫn trên
+```
 
 🧠 Tóm tắt logic chạy:
 1️⃣ Backend (Java) bật trước  → mở cổng 8080

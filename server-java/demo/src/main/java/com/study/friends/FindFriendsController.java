@@ -1,12 +1,14 @@
 package com.study.friends;
 
+import com.study.AuthUtil;
+import com.study.dto.DiscoverUserDto;
+import com.study.dto.UserDto;
+import com.study.dto.ErrorResponse;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import java.sql.*;
 import java.util.*;
-
-record DiscoverUserDto(long id, String email, String displayName, String relationshipStatus) {}
 
 @Path("/api/find-friends")
 @Produces(MediaType.APPLICATION_JSON)
@@ -26,8 +28,13 @@ public class FindFriendsController {
             @HeaderParam("Authorization") String token) {
 
         try {
-            // TODO: từ token
-            long userId = 1;
+            // Parse token to get actual userId
+            long userId;
+            try {
+                userId = AuthUtil.getUserIdFromToken(token);
+            } catch (IllegalArgumentException e) {
+                return AuthUtil.createUnauthorizedResponse(e.getMessage());
+            }
 
             if (q.isEmpty() || q.length() < 2) {
                 return Response.status(400)
@@ -57,36 +64,34 @@ public class FindFriendsController {
                     "ORDER BY u.display_name ASC " +
                     "LIMIT ? OFFSET ?";
 
-            Connection conn = com.study.Db.get();
-            PreparedStatement ps = conn.prepareStatement(sql);
+            try (Connection conn = com.study.Db.get();
+                 PreparedStatement ps = conn.prepareStatement(sql)) {
 
-            String qLike = "%" + q + "%";
-            int paramIdx = 1;
-            ps.setLong(paramIdx++, userId);
-            ps.setLong(paramIdx++, userId);
-            ps.setLong(paramIdx++, userId);
-            ps.setLong(paramIdx++, userId);
-            ps.setLong(paramIdx++, userId);
-            ps.setLong(paramIdx++, userId);
-            ps.setLong(paramIdx++, userId);
-            ps.setString(paramIdx++, qLike);
-            ps.setString(paramIdx++, qLike);
-            ps.setInt(paramIdx++, limit);
-            ps.setInt(paramIdx, offset);
+                String qLike = "%" + q + "%";
+                int paramIdx = 1;
+                ps.setLong(paramIdx++, userId);
+                ps.setLong(paramIdx++, userId);
+                ps.setLong(paramIdx++, userId);
+                ps.setLong(paramIdx++, userId);
+                ps.setLong(paramIdx++, userId);
+                ps.setLong(paramIdx++, userId);
+                ps.setLong(paramIdx++, userId);
+                ps.setString(paramIdx++, qLike);
+                ps.setString(paramIdx++, qLike);
+                ps.setInt(paramIdx++, limit);
+                ps.setInt(paramIdx, offset);
 
-            ResultSet rs = ps.executeQuery();
-            while (rs.next()) {
-                users.add(new DiscoverUserDto(
-                        rs.getLong("id"),
-                        rs.getString("email"),
-                        rs.getString("display_name"),
-                        rs.getString("relationship_status")
-                ));
+                try (ResultSet rs = ps.executeQuery()) {
+                    while (rs.next()) {
+                        users.add(new DiscoverUserDto(
+                                rs.getLong("id"),
+                                rs.getString("email"),
+                                rs.getString("display_name"),
+                                rs.getString("relationship_status")
+                        ));
+                    }
+                }
             }
-
-            rs.close();
-            ps.close();
-            conn.close();
 
             return Response.ok(Map.of(
                     "success", true,
@@ -118,7 +123,13 @@ public class FindFriendsController {
             @HeaderParam("Authorization") String token) {
 
         try {
-            long userId = 1; // TODO: từ token
+            // Parse token to get actual userId
+            long userId;
+            try {
+                userId = AuthUtil.getUserIdFromToken(token);
+            } catch (IllegalArgumentException e) {
+                return AuthUtil.createUnauthorizedResponse(e.getMessage());
+            }
 
             limit = Math.min(limit, 100);
 
@@ -136,27 +147,26 @@ public class FindFriendsController {
                     "ORDER BY us.created_at DESC " +
                     "LIMIT ?";
 
-            Connection conn = com.study.Db.get();
-            PreparedStatement ps = conn.prepareStatement(sql);
-            ps.setLong(1, userId);
-            ps.setLong(2, userId);
-            ps.setLong(3, userId);
-            ps.setLong(4, userId);
-            ps.setLong(5, userId);
-            ps.setInt(6, limit);
+            try (Connection conn = com.study.Db.get();
+                 PreparedStatement ps = conn.prepareStatement(sql)) {
+                
+                ps.setLong(1, userId);
+                ps.setLong(2, userId);
+                ps.setLong(3, userId);
+                ps.setLong(4, userId);
+                ps.setLong(5, userId);
+                ps.setInt(6, limit);
 
-            ResultSet rs = ps.executeQuery();
-            while (rs.next()) {
-                onlineUsers.add(new UserDto(
-                        rs.getLong("id"),
-                        rs.getString("email"),
-                        rs.getString("display_name")
-                ));
+                try (ResultSet rs = ps.executeQuery()) {
+                    while (rs.next()) {
+                        onlineUsers.add(new UserDto(
+                                rs.getLong("id"),
+                                rs.getString("email"),
+                                rs.getString("display_name")
+                        ));
+                    }
+                }
             }
-
-            rs.close();
-            ps.close();
-            conn.close();
 
             return Response.ok(Map.of(
                     "success", true,
