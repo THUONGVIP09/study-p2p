@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'server_config_screen.dart';
 
 /// Copy file này vào lib/ và import nơi bạn muốn dùng:
 /// Navigator.push(context, MaterialPageRoute(builder: (_) => const GetStartedScreen()));
@@ -125,6 +126,26 @@ class GetStartedScreen extends StatelessWidget {
                         ),
                       ),
                       child: const Text('Sign in'),
+                    ),
+
+                    const SizedBox(height: 16),
+
+                    // Server Config Button
+                    OutlinedButton.icon(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const ServerConfigScreen(),
+                          ),
+                        );
+                      },
+                      icon: const Icon(Icons.settings),
+                      label: const Text('Configure Server'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.blue,
+                        minimumSize: const Size(double.infinity, 48),
+                      ),
                     ),
 
                     const SizedBox(height: 8),
