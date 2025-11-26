@@ -29,9 +29,9 @@ public class Main {
         ws.start();
 
         // Chat relay WS on 8082
-        Server chatRelay = new Server("0.0.0.0", 8082, "/", null, 
-            com.study.chat.ChatRelayEndpoint.class,
-            com.study.chat.OnlineListEndpoint.class);
+        Server chatRelay = new Server("0.0.0.0", 8082, "/", null,
+                com.study.chat.ChatRelayEndpoint.class,
+                com.study.chat.OnlineListEndpoint.class);
         chatRelay.start();
         System.out.println("REST: http://127.0.0.1:8080");
         System.out.println("WS  : ws://127.0.0.1:8081/ws");
