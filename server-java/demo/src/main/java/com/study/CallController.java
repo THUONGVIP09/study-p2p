@@ -293,7 +293,20 @@ public class CallController {
         String startedStr = started != null ? started.toLocalDateTime().toString() : null;
         String endedStr = ended != null ? ended.toLocalDateTime().toString() : null;
 
-        Integer live = (Integer) rs.getObject("live_count");
+        // live_count may come as Long/BigInteger depending on MySQL/JDBC – cast safely
+        Integer live = null;
+        Object liveObj = rs.getObject("live_count");
+        if (liveObj != null) {
+            if (liveObj instanceof Number num) {
+                live = num.intValue();
+            } else {
+                try {
+                    live = Integer.valueOf(liveObj.toString());
+                } catch (Exception ignore) {
+                    live = null;
+                }
+            }
+        }
 
         return new CallSessionDto(
                 id, roomId, createdBy, topology, region, sfuRoomId,
