@@ -44,7 +44,8 @@ class _P2PChatScreenState extends State<P2PChatScreen> {
 
   /// Load lịch sử từ local JSON
   Future<void> _loadHistory() async {
-    final history = await ChatStorageService.getMessagesWithPeer(widget.peerId);
+    final history =
+        await ChatStorageService.getMessagesWithPeer(0, widget.peerId);
     setState(() {
       _messages.clear();
       _messages.addAll(history);
@@ -147,7 +148,7 @@ class _P2PChatScreenState extends State<P2PChatScreen> {
               );
 
               if (confirm == true) {
-                await ChatStorageService.clearPeerHistory(widget.peerId);
+                await ChatStorageService.clearPeerHistory(0, widget.peerId);
                 setState(() => _messages.clear());
               }
             },

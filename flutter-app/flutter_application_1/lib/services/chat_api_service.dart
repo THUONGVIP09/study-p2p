@@ -1,8 +1,9 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import '../config/app_config.dart';
 
 class ChatApiService {
-  static const String baseUrl = 'http://127.0.0.1:8080';
+  static String get baseUrl => AppConfig.httpBaseUrl;
 
   static Future<void> registerPeer(
       {required int userId, required String ip, required int port}) async {

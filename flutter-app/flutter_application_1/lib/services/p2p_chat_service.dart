@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
-import 'chat_storage_service.dart';
 
 /// Service quản lý P2P chat qua TCP socket
 /// Mỗi peer sẽ:
@@ -90,17 +89,13 @@ class P2PChatService {
 
           print('📨 Received from $peerId: ${decoded['content']}');
 
-          // Lưu vào local storage
-          ChatStorageService.addMessage(peerId, {
-            'sender': 'peer',
-            'content': decoded['content'],
-            'timestamp':
-                decoded['timestamp'] ?? DateTime.now().toIso8601String(),
-          });
+          // KHÔNG lưu storage ở đây nữa - để HybridChatService xử lý
+          // vì cần convert peerId -> friendId trước khi lưu
 
-          // Emit event
+          // Emit event với peerId và FROM (userId của người gửi)
           _messageController.add({
             'peerId': peerId,
+            'from': decoded['from'], // ✅ Lấy userId từ tin nhắn!
             'sender': 'peer',
             'content': decoded['content'],
             'timestamp':
@@ -141,12 +136,8 @@ class P2PChatService {
       socket.write(message);
       await socket.flush();
 
-      // Lưu vào local storage
-      await ChatStorageService.addMessage(peerId, {
-        'sender': 'me',
-        'content': content,
-        'timestamp': DateTime.now().toIso8601String(),
-      });
+      // KHÔNG lưu storage ở đây nữa - để HybridChatService xử lý
+      // vì cần friendId để lưu, không phải peerId
 
       print('📤 Sent to $peerId: $content');
       return true;

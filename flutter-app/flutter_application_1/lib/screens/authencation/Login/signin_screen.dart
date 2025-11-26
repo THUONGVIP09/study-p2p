@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_application_1/services/api_service.dart'; // Giữ import
+import 'package:flutter_application_1/services/api_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class SignInScreen extends StatefulWidget {
   const SignInScreen({super.key});
@@ -138,6 +139,25 @@ class _SignInScreenState extends State<SignInScreen> {
                                               password: _passwordController.text
                                                   .trim(),
                                             );
+
+                                            // SAVE userId to SharedPreferences
+                                            final prefs =
+                                                await SharedPreferences
+                                                    .getInstance();
+                                            await prefs.setInt(
+                                                'userId', result['user']['id']);
+                                            // Lưu email từ input (vì API không trả về)
+                                            await prefs.setString('userEmail',
+                                                _emailController.text.trim());
+                                            // Lưu tên từ result['user']['name']
+                                            final userName =
+                                                result['user']['name'];
+                                            if (userName != null) {
+                                              await prefs.setString(
+                                                  'userName', userName);
+                                            }
+
+                                            if (!mounted) return;
                                             Navigator.pushReplacementNamed(
                                                 context, '/home');
                                             ScaffoldMessenger.of(context)

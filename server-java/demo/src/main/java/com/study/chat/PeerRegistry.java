@@ -30,4 +30,11 @@ public class PeerRegistry {
         }
         return p;
     }
+
+    public Map<Long, PeerInfo> getAllPeers() {
+        // Clean expired peers first
+        long now = System.currentTimeMillis();
+        peers.entrySet().removeIf(e -> now - e.getValue().lastSeen > EXPIRY_MS);
+        return new java.util.HashMap<>(peers);
+    }
 }

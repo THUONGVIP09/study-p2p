@@ -3,6 +3,7 @@ import 'package:flutter_application_1/screens/rooms/rooms_page.dart';
 import 'package:flutter_application_1/screens/friends/friends_screen.dart';
 import 'package:flutter_application_1/screens/tasks/tasks_list.dart';
 import 'package:flutter_application_1/screens/chat/p2p_peers_list.dart';
+import 'package:flutter_application_1/widgets/server_ip_indicator.dart';
 // import 'call_page.dart';
 
 class HomeShell extends StatefulWidget {
@@ -37,58 +38,66 @@ class _HomeShellState extends State<HomeShell> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Row(
+      body: Stack(
         children: [
-          NavigationRail(
-            selectedIndex: index,
-            onDestinationSelected: (i) => setState(() => index = i),
-            labelType: NavigationRailLabelType.none,
-            minWidth: 72,
-            backgroundColor: const Color(0xFF1E1B1D), // nền tối giống ảnh
-            selectedIconTheme: const IconThemeData(color: Color(0xFFE68AF7)),
-            unselectedIconTheme: const IconThemeData(color: Colors.white),
+          Row(
+            children: [
+              NavigationRail(
+                selectedIndex: index,
+                onDestinationSelected: (i) => setState(() => index = i),
+                labelType: NavigationRailLabelType.none,
+                minWidth: 72,
+                backgroundColor: const Color(0xFF1E1B1D), // nền tối giống ảnh
+                selectedIconTheme:
+                    const IconThemeData(color: Color(0xFFE68AF7)),
+                unselectedIconTheme: const IconThemeData(color: Colors.white),
 
-            leading: const SizedBox(height: 8),
-            destinations: [
-              for (final t in tabs)
-                NavigationRailDestination(
-                  icon: Icon(t.icon),
-                  selectedIcon: Icon(t.icon),
-                  label: Text(t.label),
+                leading: const SizedBox(height: 8),
+                destinations: [
+                  for (final t in tabs)
+                    NavigationRailDestination(
+                      icon: Icon(t.icon),
+                      selectedIcon: Icon(t.icon),
+                      label: Text(t.label),
+                    ),
+                ],
+
+                // nhóm các icon mờ ở đáy
+                trailing: Column(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    const SizedBox(height: 16),
+                    for (final w in trailing)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                        child: w,
+                      ),
+                    const SizedBox(height: 16),
+                  ],
                 ),
+              ),
+
+              // Khu vực nội dung trắng (placeholder)
+              Expanded(
+                child: IndexedStack(
+                  index: index,
+                  children: [
+                    const RoomsPage(),
+                    const _PlaceholderPage('Whiteboard'), // Tab 1
+                    const _PlaceholderPage('Calendar'), // Tab 2
+                    const TasksListScreen(), // Tab 3: Tasks
+                    const FriendsScreen(), // Tab 4: Members
+                    const P2PPeersListScreen(), // Tab 5: P2P Chat
+                    const _PlaceholderPage('Tools'), // Tab 6
+                    const _PlaceholderPage('Flags'), // Tab 7
+                  ],
+                ),
+              ),
             ],
-
-            // nhóm các icon mờ ở đáy
-            trailing: Column(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                const SizedBox(height: 16),
-                for (final w in trailing)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 10),
-                    child: w,
-                  ),
-                const SizedBox(height: 16),
-              ],
-            ),
           ),
 
-          // Khu vực nội dung trắng (placeholder)
-          Expanded(
-            child: IndexedStack(
-              index: index,
-              children: [
-                const RoomsPage(),
-                const _PlaceholderPage('Whiteboard'), // Tab 1
-                const _PlaceholderPage('Calendar'), // Tab 2
-                const TasksListScreen(), // Tab 3: Tasks
-                const FriendsScreen(), // Tab 4: Members
-                const P2PPeersListScreen(), // Tab 5: P2P Chat
-                const _PlaceholderPage('Tools'), // Tab 6
-                const _PlaceholderPage('Flags'), // Tab 7
-              ],
-            ),
-          ),
+          // Server IP indicator at bottom right
+          const ServerIpIndicator(),
         ],
       ),
     );

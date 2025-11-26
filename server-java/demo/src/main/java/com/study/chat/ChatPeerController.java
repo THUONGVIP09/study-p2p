@@ -19,6 +19,10 @@ public class ChatPeerController {
             String ip = body.get("ip").toString();
             int port = Integer.parseInt(body.get("port").toString());
             PeerRegistry.get().register(userId, ip, port);
+            
+            // Broadcast updated list to all subscribers
+            OnlineListEndpoint.broadcastList();
+            
             Map<String, Object> resp = new HashMap<>();
             resp.put("success", true);
             return Response.ok(resp).build();
@@ -34,6 +38,10 @@ public class ChatPeerController {
         try {
             long userId = Long.parseLong(body.get("userId").toString());
             PeerRegistry.get().heartbeat(userId);
+            
+            // Optional: broadcast on heartbeat (can reduce frequency if needed)
+            OnlineListEndpoint.broadcastList();
+            
             return Response.ok(Map.of("success", true)).build();
         } catch (Exception e) {
             return Response.status(400).entity(Map.of("error", e.getMessage())).build();
