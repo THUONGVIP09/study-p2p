@@ -12,13 +12,14 @@ public class Main {
 
     public static void main(String[] args) throws Exception {
         final ResourceConfig rc = new ResourceConfig()
-            .packages("com.study", "com.study.friends")
+                .packages("com.study", "com.study.friends")
                 .register(JacksonFeature.class) // JSON
                 .register(CORSFilter.class) // CORS
                 .register(Db.class) // Database
                 .register(AuthController.class) // Auth
                 .register(RoomsController.class) // Room
                 .register(CallController.class) // Call
+
         ;
 
         HttpServer server = GrizzlyHttpServerFactory.createHttpServer(URI.create("http://0.0.0.0:8080/"), rc, true);
