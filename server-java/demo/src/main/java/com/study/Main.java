@@ -10,18 +10,26 @@ public class Main {
 
     public static void main(String[] args) throws Exception {
         final ResourceConfig rc = new ResourceConfig()
+<<<<<<< HEAD
+                .packages("com.study", "com.study.friends")
+=======
                 .packages("com.study")
+>>>>>>> 53c9915b86abf92b6b3278b6d7aa79eba41e0b63
                 .register(JacksonFeature.class) // JSON
                 .register(CORSFilter.class) // CORS
                 .register(AuthController.class) // Auth
                 .register(RoomsController.class) // Room
                 .register(CallController.class) // Call
+<<<<<<< HEAD
+
+=======
                 .register(com.study.friends.FriendsController.class) // Friends
                 .register(com.study.friends.FriendRequestsController.class) // Friend Requests
                 .register(com.study.friends.BlockedUsersController.class) // Blocked Users
                 .register(com.study.friends.FindFriendsController.class) // Find Friends
                 .register(com.study.tasks.TasksController.class) // Tasks
                 .register(com.study.chat.ChatPeerController.class) // Chat Peer Registry
+>>>>>>> 53c9915b86abf92b6b3278b6d7aa79eba41e0b63
         ;
 
         GrizzlyHttpServerFactory.createHttpServer(URI.create("http://0.0.0.0:8080/"), rc, true);
