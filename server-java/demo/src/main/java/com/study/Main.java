@@ -10,14 +10,12 @@ public class Main {
 
     public static void main(String[] args) throws Exception {
         final ResourceConfig rc = new ResourceConfig()
-                .packages("com.study", "com.study.friends")
                 .packages("com.study")
                 .register(JacksonFeature.class) // JSON
                 .register(CORSFilter.class) // CORS
                 .register(AuthController.class) // Auth
                 .register(RoomsController.class) // Room
                 .register(CallController.class) // Call
-
                 .register(com.study.friends.FriendsController.class) // Friends
                 .register(com.study.friends.FriendRequestsController.class) // Friend Requests
                 .register(com.study.friends.BlockedUsersController.class) // Blocked Users
@@ -38,7 +36,6 @@ public class Main {
         System.out.println("REST: http://127.0.0.1:8080");
         System.out.println("WS  : ws://127.0.0.1:8081/ws");
         System.out.println("Chat Relay: ws://127.0.0.1:8082/chat-relay/{userId}");
-        System.out.println("Online List: ws://127.0.0.1:8082/chat-online-list");
 
         Thread.currentThread().join();
     }

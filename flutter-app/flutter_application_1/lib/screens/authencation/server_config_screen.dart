@@ -1,13 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../services/network_helper.dart';
 import '../../config/app_config.dart';
-import 'Login/signin_screen.dart';
+import 'get_started_screen.dart';
 
 /// Màn hình config server TRƯỚC KHI login
 /// Cho phép user set IP server trước khi vào app
 class ServerConfigScreen extends StatefulWidget {
-  const ServerConfigScreen({Key? key}) : super(key: key);
+  final bool isFirstTime;
+
+  const ServerConfigScreen({Key? key, this.isFirstTime = false})
+      : super(key: key);
 
   @override
   State<ServerConfigScreen> createState() => _ServerConfigScreenState();
@@ -44,7 +48,7 @@ class _ServerConfigScreenState extends State<ServerConfigScreen> {
     }
   }
 
-  void _proceedToLogin() {
+  Future<void> _proceedToLogin() async {
     final serverIp = _serverIpController.text.trim();
 
     if (serverIp.isEmpty) {
@@ -58,10 +62,27 @@ class _ServerConfigScreenState extends State<ServerConfigScreen> {
     AppConfig.setServerIp(serverIp);
     AppConfig.printConfig();
 
-    // Navigate to login
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (context) => const SignInScreen()),
-    );
+    // Save to SharedPreferences
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('server_ip', serverIp);
+      print('💾 Saved server IP to SharedPreferences: $serverIp');
+    } catch (e) {
+      print('❌ Error saving server IP: $e');
+    }
+
+    if (!mounted) return;
+
+    // Navigate based on context
+    if (widget.isFirstTime) {
+      // Lần đầu → vào GetStartedScreen
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (context) => const GetStartedScreen()),
+      );
+    } else {
+      // Từ GetStartedScreen → quay lại
+      Navigator.of(context).pop();
+    }
   }
 
   void _useLocalhost() {
@@ -82,8 +103,11 @@ class _ServerConfigScreenState extends State<ServerConfigScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Server Configuration'),
+        title: Text(
+            widget.isFirstTime ? 'First Time Setup' : 'Server Configuration'),
         backgroundColor: Colors.blue,
+        automaticallyImplyLeading:
+            !widget.isFirstTime, // No back button if first time
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
