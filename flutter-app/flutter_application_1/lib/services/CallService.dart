@@ -75,14 +75,16 @@ class CallService {
   Future<CallSession> startCall({
     required int roomId,
     required int userId,
-    required String roomCode, // dùng làm sfuRoomId
+    required String roomCode,
+    String topology = 'sfu',      // <-- thêm tham số
+    String? sfuRegion,
   }) async {
     final body = {
       'roomId': roomId,
       'userId': userId,
-      'topology': 'sfu',
-      'sfuRegion': null,
-      'sfuRoomId': roomCode,
+      'topology': topology,       // có thể là 'sfu' hoặc 'p2p'
+      'sfuRegion': sfuRegion,
+      'sfuRoomId': roomCode,      // P2P có thể vẫn dùng roomCode cho dễ track
     };
     final json = await _post('/api/calls/start', body);
     if (json['success'] != true) {
@@ -97,11 +99,12 @@ class CallService {
     required int userId,
     bool micMuted = false,
     bool camEnabled = true,
+    String joinMode = 'SFU',      // <-- thêm tham số
   }) async {
     final body = {
       'callId': callId,
       'userId': userId,
-      'joinMode': 'SFU',
+      'joinMode': joinMode,       // 'SFU' hoặc 'P2P'
       'micMuted': micMuted,
       'camEnabled': camEnabled,
     };

@@ -1,22 +1,19 @@
-import 'dart:async';
+import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:agora_rtc_engine/agora_rtc_engine.dart';
+import 'package:flutter_webrtc/flutter_webrtc.dart';
 
-import '../models/room.dart';
-import '../models/call_session.dart';
-import '../services/CallService.dart';
+import 'models/room.dart';
+import 'models/call_session.dart';
+import 'services/api_service.dart';
 
-// TODO: thay bằng App ID thật của bro (đang dùng luôn appId cũ)
-const String agoraAppId = '2f5b8d4ac95e41168548190bea8a2141';
-const String agoraToken = ''; // App ID only -> để rỗng / null
-
-class GroupCallPage extends StatefulWidget {
+class P2PCallPage extends StatefulWidget {
   final Room room;
   final CallSession callSession;
   final int currentUserId;
 
-  const GroupCallPage({
+  const P2PCallPage({
     super.key,
     required this.room,
     required this.callSession,
@@ -24,205 +21,456 @@ class GroupCallPage extends StatefulWidget {
   });
 
   @override
-  State<GroupCallPage> createState() => _GroupCallPageState();
+  State<P2PCallPage> createState() => _P2PCallPageState();
 }
 
-class _GroupCallPageState extends State<GroupCallPage> {
-  RtcEngine? _engine;
-  final CallService _callService = const CallService();
+class _P2PCallPageState extends State<P2PCallPage> {
+  final _localRenderer = RTCVideoRenderer();
+  final _remoteRenderer = RTCVideoRenderer();
+  bool _remoteJoined = false;
+String? _remoteName;
 
-  bool _joined = false;
-  int? _remoteUid;
+
+  MediaStream? _localStream;
+  RTCPeerConnection? _pc;
+
+  WebSocket? _ws;
+  late final String _myUid;
+  String? _remoteUid;
+
   bool micMuted = false;
   bool camEnabled = true;
-
-  Timer? _heartbeatTimer;
 
   @override
   void initState() {
     super.initState();
-    _initAgora();
-    _startHeartbeat();
+    _myUid = '${widget.currentUserId}-${DateTime.now().microsecondsSinceEpoch}';
+    _initAll();
   }
 
-  Future<void> _initAgora() async {
-    try {
-      final engine = createAgoraRtcEngine();
-      _engine = engine;
+  Future<void> _initAll() async {
+    await _localRenderer.initialize();
+    await _remoteRenderer.initialize();
 
-      await engine.initialize(const RtcEngineContext(
-        appId: agoraAppId,
-        channelProfile: ChannelProfileType.channelProfileCommunication,
-      ));
+    // Luôn bật local trước
+    await _startLocalStream();
 
-      await engine.enableVideo();
-      await engine.startPreview();
+    // Sau đó connect WS
+    await _connectWs();
+  }
 
-      engine.registerEventHandler(
-        RtcEngineEventHandler(
-          onError: (err, msg) {
-            // debug
-            // ignore: avoid_print
-            print('AGORA ERROR: $err $msg');
-          },
-          onJoinChannelSuccess: (connection, elapsed) {
-            // ignore: avoid_print
-            print('JOIN OK: ${connection.channelId}');
-            if (mounted) {
-              setState(() => _joined = true);
-            }
-          },
-          onUserJoined: (connection, remoteUid, elapsed) {
-            // ignore: avoid_print
-            print('REMOTE JOIN: $remoteUid');
-            if (mounted) {
-              setState(() => _remoteUid = remoteUid);
-            }
-          },
-          onUserOffline: (connection, remoteUid, reason) {
-            // ignore: avoid_print
-            print('REMOTE OFFLINE: $remoteUid');
-            if (mounted) {
-              setState(() => _remoteUid = null);
-            }
-          },
-        ),
-      );
+  // ================== MEDIA ==================
 
-      await engine.joinChannel(
-        token: agoraToken.isEmpty ? '' : agoraToken,
-        channelId: widget.room.roomCode, // dùng mã phòng làm channel
-        uid: 0,
-        options: const ChannelMediaOptions(
-          channelProfile: ChannelProfileType.channelProfileCommunication,
-          clientRoleType: ClientRoleType.clientRoleBroadcaster,
-        ),
-      );
-    } catch (e) {
-      // ignore: avoid_print
-      print('INIT AGORA FAILED: $e');
+  Future<void> _startLocalStream({bool allowFailure = false}) async {
+  if (_localStream != null) return;
+
+  try {
+    final stream = await navigator.mediaDevices.getUserMedia({
+      'audio': true,
+      'video': {
+        'facingMode': 'user',
+        'width': 640,
+        'height': 480,
+        'frameRate': 30,
+      },
+    });
+
+    debugPrint(
+        '🎥 getUserMedia ok v=${stream.getVideoTracks().length} a=${stream.getAudioTracks().length}');
+
+    _localStream = stream;
+    _localRenderer.srcObject = stream;
+    setState(() {});
+
+    // nếu đã có PC thì add track
+    if (_pc != null) {
+      debugPrint('➕ addTrack local vào PC (sau getUserMedia)');
+      for (final track in stream.getTracks()) {
+        await _pc!.addTrack(track, stream);
+      }
+    }
+  } catch (e) {
+    debugPrint('⚠️ getUserMedia FAILED: $e');
+
+    // Nếu cho phép fail thì không throw, chỉ không có localStream
+    if (allowFailure) {
+      _localStream = null;
+      _localRenderer.srcObject = null;
+      setState(() {});
+      return;
+    }
+
+    rethrow; // chỗ khác nếu cần vẫn có thể bắt lỗi
+  }
+}
+
+  Future<void> _createPeerConnectionIfNeeded() async {
+  if (_pc != null) return;
+
+  final pc = await createPeerConnection({
+    'iceServers': [
+      {'urls': 'stun:stun.l.google.com:19302'},
+    ],
+    // 🔥 bật Unified Plan để onTrack hoạt động đúng
+    'sdpSemantics': 'unified-plan',
+  });
+
+  pc.onIceCandidate = (c) {
+    if (c.candidate == null || _remoteUid == null) return;
+    debugPrint('❄️ local ICE: ${c.candidate}');
+    _send({
+      't': 'ice',
+      'from': _myUid,
+      'to': _remoteUid,
+      'candidate': c.candidate,
+      'sdpMid': c.sdpMid,
+      'sdpMLineIndex': c.sdpMLineIndex,
+    });
+  };
+
+  // Unified Plan: nhận remote track
+  pc.onTrack = (RTCTrackEvent e) {
+    if (e.streams.isNotEmpty) {
+      debugPrint('📺 onTrack stream=${e.streams[0].id} kind=${e.track.kind}');
+      setState(() {
+        _remoteRenderer.srcObject = e.streams[0];
+      });
+    } else {
+      debugPrint('📺 onTrack nhưng streams rỗng, kind=${e.track.kind}');
+    }
+  };
+
+  // fallback Plan-B nếu plugin còn bắn onAddStream
+  pc.onAddStream = (MediaStream s) {
+    debugPrint('📺 onAddStream stream=${s.id}');
+    setState(() {
+      _remoteRenderer.srcObject = s;
+    });
+  };
+
+  pc.onConnectionState = (st) {
+    debugPrint('🔗 PC state = $st');
+  };
+
+  _pc = pc;
+
+  if (_localStream != null) {
+    debugPrint('➕ addTrack local vào PC (lúc tạo PC)');
+    for (final track in _localStream!.getTracks()) {
+      await pc.addTrack(track, _localStream!);
     }
   }
+}
 
-  void _startHeartbeat() {
-    _heartbeatTimer = Timer.periodic(const Duration(seconds: 10), (_) async {
-      try {
-        await _callService.heartbeat(
-          callId: widget.callSession.id,
-          userId: widget.currentUserId,
-          micMuted: micMuted,
-          camEnabled: camEnabled,
-        );
-      } catch (e) {
-        // có thể log nếu cần
-        // debugPrint('heartbeat error: $e');
-      }
+
+  // ================== SIGNALING WS ==================
+
+  Future<void> _connectWs() async {
+    final httpBase = ApiService.baseUrl; // http://192.168.2.204:8080
+    final wsBase = httpBase
+        .replaceFirst('https://', 'wss://')
+        .replaceFirst('http://', 'ws://')
+        .replaceFirst(':8080', ':8081'); // signaling ở 8081
+
+    final uri = Uri.parse('$wsBase/ws');
+    debugPrint('🔌 WS connect: $uri');
+
+    _ws = await WebSocket.connect(uri.toString());
+    _ws!.listen(
+      (data) {
+        debugPrint('📩 WS recv: $data');
+        final m = jsonDecode(data as String) as Map<String, dynamic>;
+        _onWsMessage(m);
+      },
+      onDone: () => debugPrint('WS closed'),
+      onError: (e) => debugPrint('WS error: $e'),
+    );
+
+    _send({
+      't': 'join',
+      'room': widget.room.roomCode, // "R000001"
+      'uid': _myUid,
+      'name': 'User $_myUid',
     });
   }
 
-  Future<void> _leaveCall() async {
+  void _send(Map<String, dynamic> m) {
+    final txt = jsonEncode(m);
+    debugPrint('📤 WS send: $txt');
+    _ws?.add(txt);
+  }
+
+  Future<void> _onWsMessage(Map<String, dynamic> m) async {
+  final t = m['t'] as String? ?? '';
+
+  switch (t) {
+    case 'peers':
+      final peers = (m['peers'] as List<dynamic>? ?? []);
+      if (peers.isNotEmpty) {
+        final first = peers.first as Map<String, dynamic>;
+        _remoteUid = first['uid'] as String?;
+        _remoteName = first['name'] as String?;
+        _remoteJoined = true;                // 🔥 đã có người trong phòng
+        setState(() {});
+        await _startAsCaller();
+      }
+      break;
+
+    case 'peer.joined':
+      // Trường hợp mình vào trước, người khác vào sau
+      _remoteUid = m['uid'] as String?;
+      _remoteName = m['name'] as String?;
+      _remoteJoined = true;
+      setState(() {});
+      // Thằng join sau sẽ tự nhận 'peers' và gọi offer, mình chỉ cần chờ offer
+      break;
+
+    case 'offer':
+      await _handleOffer(m);
+      break;
+
+    case 'answer':
+      await _handleAnswer(m);
+      break;
+
+    case 'ice':
+      await _handleIce(m);
+      break;
+
+    case 'peer.left':
+      _remoteJoined = false;
+      _remoteRenderer.srcObject = null;
+      setState(() {});
+      break;
+  }
+}
+
+
+  // ================== OFFER / ANSWER ==================
+
+ Future<void> _startAsCaller() async {
+  if (_remoteUid == null) return;
+
+  // ⚠️ Cho phép lỗi cam nhưng vẫn tiếp tục call
+  await _startLocalStream(allowFailure: true);
+  await _createPeerConnectionIfNeeded();
+
+  final pc = _pc!;
+  final offer = await pc.createOffer({
+    'offerToReceiveAudio': 1,
+    'offerToReceiveVideo': 1,
+  });
+  await pc.setLocalDescription(offer);
+
+  debugPrint('📤 send OFFER to=$_remoteUid');
+  _send({
+    't': 'offer',
+    'from': _myUid,
+    'to': _remoteUid,
+    'sdp': offer.sdp,
+    'type': offer.type,
+  });
+}
+
+
+
+  Future<void> _handleOffer(Map<String, dynamic> m) async {
+  _remoteUid = m['from'] as String?;
+  if (_remoteUid == null) return;
+
+  // ⚠️ Cho phép lỗi cam nhưng vẫn nhận remote video
+  await _startLocalStream(allowFailure: true);
+  await _createPeerConnectionIfNeeded();
+
+  final pc = _pc!;
+  final remoteDesc = RTCSessionDescription(
+    m['sdp'] as String,
+    m['type'] as String,
+  );
+  debugPrint('📥 setRemoteDescription(offer)');
+  await pc.setRemoteDescription(remoteDesc);
+
+  final answer = await pc.createAnswer({
+    'offerToReceiveAudio': 1,
+    'offerToReceiveVideo': 1,
+  });
+  await pc.setLocalDescription(answer);
+
+  debugPrint('📤 send ANSWER to=$_remoteUid');
+  _send({
+    't': 'answer',
+    'from': _myUid,
+    'to': _remoteUid,
+    'sdp': answer.sdp,
+    'type': answer.type,
+  });
+}
+
+
+  Future<void> _handleAnswer(Map<String, dynamic> m) async {
+    final pc = _pc;
+    if (pc == null) return;
+
+    final remoteDesc = RTCSessionDescription(
+      m['sdp'] as String,
+      m['type'] as String,
+    );
+    debugPrint('📥 setRemoteDescription(answer)');
+    await pc.setRemoteDescription(remoteDesc);
+  }
+
+  Future<void> _handleIce(Map<String, dynamic> m) async {
+    final pc = _pc;
+    if (pc == null) return;
+
+    final cand = RTCIceCandidate(
+      m['candidate'] as String?,
+      m['sdpMid'] as String?,
+      m['sdpMLineIndex'] as int?,
+    );
+    debugPrint('❄️ addCandidate');
+    await pc.addCandidate(cand);
+  }
+
+  // ================== LEAVE / CLEANUP ==================
+
+  Future<void> _leave() async {
     try {
-      await _callService.leave(
-        callId: widget.callSession.id,
-        userId: widget.currentUserId,
-      );
-    } catch (e) {
-      // ignore lỗi nhỏ
+      _send({'t': 'leave', 'uid': _myUid});
+    } catch (_) {}
+
+    try {
+      await _ws?.close();
+    } catch (_) {}
+
+    try {
+      await _pc?.close();
+    } catch (_) {}
+
+    if (_localStream != null) {
+      for (final t in _localStream!.getTracks()) {
+        t.stop();
+      }
+      await _localStream!.dispose();
     }
 
-    final engine = _engine;
-    if (engine != null) {
-      await engine.leaveChannel();
-      await engine.release();
-    }
+    _localRenderer.srcObject = null;
+    _remoteRenderer.srcObject = null;
+
+    await _localRenderer.dispose();
+    await _remoteRenderer.dispose();
 
     if (mounted) Navigator.pop(context);
   }
 
   @override
   void dispose() {
-    _heartbeatTimer?.cancel();
-    final engine = _engine;
-    if (engine != null) {
-      engine.leaveChannel();
-      engine.release();
-    }
+    _ws?.close();
+    _pc?.close();
+    _localStream?.dispose();
+    _localRenderer.dispose();
+    _remoteRenderer.dispose();
     super.dispose();
   }
+
+  // ================== UI ==================
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFFCEBFF),
       appBar: AppBar(
-        title: Text('Group Call: ${widget.room.name}'),
+        title: Text('P2P Call: ${widget.room.name}'),
         backgroundColor: Colors.purple[100],
       ),
       body: Column(
         children: [
+          // local
           Expanded(
-            child: Center(
-              child: _joined && _engine != null
-                  ? AgoraVideoView(
-                      controller: VideoViewController(
-                        rtcEngine: _engine!,
-                        canvas: const VideoCanvas(uid: 0),
-                      ),
-                    )
-                  : const Text('Đang join channel...'),
+            child: Container(
+              color: Colors.black,
+              child: _localStream == null
+                  ? const Center(child: Text('Đang bật camera...'))
+                  : RTCVideoView(_localRenderer, mirror: true),
             ),
           ),
-          Expanded(
-            child: Center(
-              child: _remoteUid != null && _engine != null
-                  ? AgoraVideoView(
-                      controller: VideoViewController.remote(
-                        rtcEngine: _engine!,
-                        canvas: VideoCanvas(uid: _remoteUid),
-                        connection: RtcConnection(
-                          channelId: widget.room.roomCode,
-                        ),
-                      ),
-                    )
-                  : const Text('Chờ người khác join...'),
-            ),
+          // remote
+         Expanded(
+  child: Container(
+    color: Colors.grey[900],
+    child: _remoteRenderer.srcObject != null
+        ? RTCVideoView(_remoteRenderer)
+        : _remoteJoined
+            ? _buildRemoteAvatar()
+            : const Center(child: Text('Chờ đối phương join...')),
+  ),
+  
+),
+
+          const SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              IconButton(
+                icon: Icon(micMuted ? Icons.mic_off : Icons.mic),
+                onPressed: () {
+                  setState(() => micMuted = !micMuted);
+                  final enabled = !micMuted;
+                  _localStream?.getAudioTracks().forEach((t) {
+                    t.enabled = enabled;
+                  });
+                },
+              ),
+              IconButton(
+                icon: Icon(camEnabled ? Icons.videocam : Icons.videocam_off),
+                onPressed: () {
+                  setState(() => camEnabled = !camEnabled);
+                  final enabled = camEnabled;
+                  _localStream?.getVideoTracks().forEach((t) {
+                    t.enabled = enabled;
+                  });
+                },
+              ),
+              IconButton(
+                icon: const Icon(Icons.call_end, color: Colors.red),
+                onPressed: _leave,
+              ),
+            ],
           ),
           const SizedBox(height: 12),
-          _buildControls(),
-          const SizedBox(height: 16),
         ],
       ),
     );
   }
 
-  Widget _buildControls() {
-    final engine = _engine;
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
+ Widget _buildRemoteAvatar() {
+  final name = _remoteName ?? 'Đối phương';
+  final initial = name.isNotEmpty ? name[0].toUpperCase() : '?';
+
+  return Center(
+    child: Column(
+      mainAxisSize: MainAxisSize.min,
       children: [
-        IconButton(
-          icon: Icon(micMuted ? Icons.mic_off : Icons.mic),
-          onPressed: engine == null
-              ? null
-              : () {
-                  setState(() => micMuted = !micMuted);
-                  engine.muteLocalAudioStream(micMuted);
-                },
+        CircleAvatar(
+          radius: 36,
+          child: Text(
+            initial,
+            style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
+          ),
         ),
-        IconButton(
-          icon: Icon(camEnabled ? Icons.videocam : Icons.videocam_off),
-          onPressed: engine == null
-              ? null
-              : () {
-                  setState(() => camEnabled = !camEnabled);
-                  engine.muteLocalVideoStream(!camEnabled);
-                },
+        const SizedBox(height: 8),
+        Text(
+          name,
+          style: const TextStyle(color: Colors.white),
         ),
-        IconButton(
-          icon: const Icon(Icons.call_end, color: Colors.red),
-          onPressed: _leaveCall,
+        const SizedBox(height: 4),
+        const Text(
+          'Đã tham gia (không bật camera)',
+          style: TextStyle(color: Colors.white70, fontSize: 12),
         ),
       ],
-    );
-  }
+    ),
+  );
+}
+
 }

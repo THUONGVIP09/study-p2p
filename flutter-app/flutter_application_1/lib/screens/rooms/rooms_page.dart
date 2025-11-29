@@ -111,17 +111,19 @@ class _RoomsPageState extends State<RoomsPage> {
 
       if (!mounted) return;
 
-      // 4. Mở màn call Agora
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => GroupCallPage(
-            room: room,
-            callSession: session,
-            currentUserId: _userId!,
-          ),
-        ),
-      );
+      
+     Navigator.push(
+  context,
+  MaterialPageRoute(
+    builder: (_) => P2PCallPage(
+      room: room,
+      callSession: session,   // session bro đã lấy bằng CallService
+      currentUserId: _userId!,
+    ),
+  ),
+);
+
+
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Không join call được: $e')),
