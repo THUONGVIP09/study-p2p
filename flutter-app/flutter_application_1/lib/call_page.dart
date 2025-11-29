@@ -41,6 +41,7 @@ class _P2PCallPageState extends State<P2PCallPage> {
   final Map<String, PeerInfo> _peers = {};
 
   MediaStream? _localStream;
+  MediaStream? _screenStream; // 🖥️ Screen share stream
 
   WebSocket? _ws;
   late final String _myUid;
@@ -48,6 +49,7 @@ class _P2PCallPageState extends State<P2PCallPage> {
   bool micMuted = false;
   bool camEnabled = true;
   bool _isAudioOnlyMode = false; // 🎤 Flag cho chế độ audio-only
+  bool _isScreenSharing = false; // 🖥️ Flag cho screen sharing
 
   @override
   void initState() {
@@ -224,6 +226,139 @@ class _P2PCallPageState extends State<P2PCallPage> {
     }
 
     return pc;
+  }
+
+  // ================== SCREEN SHARING ==================
+
+  Future<void> _toggleScreenSharing() async {
+    if (_isScreenSharing) {
+      // Đang share → stop và quay về camera
+      await _stopScreenSharing();
+    } else {
+      // Chưa share → bắt đầu share
+      await _startScreenSharing();
+    }
+  }
+
+  Future<void> _startScreenSharing() async {
+    try {
+      debugPrint('🖥️ Starting screen share...');
+
+      // Capture screen
+      final screenStream = await navigator.mediaDevices.getDisplayMedia({
+        'video': {
+          'width': 1920,
+          'height': 1080,
+          'frameRate': 30,
+        },
+        'audio': false, // Screen audio có thể bật nếu cần
+      });
+
+      debugPrint(
+          '🖥️ Screen capture OK: ${screenStream.getVideoTracks().length} tracks');
+
+      _screenStream = screenStream;
+      _isScreenSharing = true;
+
+      // Lắng nghe sự kiện user stop share từ browser UI
+      final videoTrack = screenStream.getVideoTracks().firstOrNull;
+      if (videoTrack != null) {
+        videoTrack.onEnded = () {
+          debugPrint('🖥️ Screen share ended by user');
+          _stopScreenSharing();
+        };
+      }
+
+      // Replace video track trong local renderer
+      _localRenderer.srcObject = screenStream;
+
+      // Replace video track trong TẤT CẢ PeerConnections
+      final screenVideoTrack = screenStream.getVideoTracks().first;
+      for (final peer in _peers.values) {
+        if (peer.pc != null) {
+          // Tìm sender của video track cũ
+          final senders = await peer.pc!.getSenders();
+          final videoSender = senders.firstWhere(
+            (s) => s.track?.kind == 'video',
+            orElse: () => throw Exception('No video sender found'),
+          );
+
+          // Replace track
+          await videoSender.replaceTrack(screenVideoTrack);
+          debugPrint('🖥️ Replaced video track for peer=${peer.uid}');
+        }
+      }
+
+      setState(() {});
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('🖥️ Đang chia sẻ màn hình'),
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint('❌ Screen share failed: $e');
+      _isScreenSharing = false;
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('❌ Không thể chia sẻ màn hình: $e'),
+            duration: Duration(seconds: 3),
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _stopScreenSharing() async {
+    if (_screenStream == null) return;
+
+    debugPrint('🖥️ Stopping screen share...');
+
+    // Stop screen tracks
+    for (final track in _screenStream!.getTracks()) {
+      track.stop();
+    }
+    await _screenStream!.dispose();
+    _screenStream = null;
+    _isScreenSharing = false;
+
+    // Quay về camera stream
+    if (_localStream != null) {
+      _localRenderer.srcObject = _localStream;
+
+      // Replace lại video track về camera trong TẤT CẢ PeerConnections
+      final cameraVideoTrack = _localStream!.getVideoTracks().firstOrNull;
+      if (cameraVideoTrack != null) {
+        for (final peer in _peers.values) {
+          if (peer.pc != null) {
+            final senders = await peer.pc!.getSenders();
+            final videoSender = senders.firstWhere(
+              (s) => s.track?.kind == 'video',
+              orElse: () => throw Exception('No video sender found'),
+            );
+
+            await videoSender.replaceTrack(cameraVideoTrack);
+            debugPrint('📹 Switched back to camera for peer=${peer.uid}');
+          }
+        }
+      }
+    }
+
+    setState(() {});
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('📹 Đã dừng chia sẻ màn hình'),
+          duration: Duration(seconds: 2),
+        ),
+      );
+    }
   }
 
   // ================== SIGNALING WS ==================
@@ -470,6 +605,14 @@ class _P2PCallPageState extends State<P2PCallPage> {
     }
     _peers.clear();
 
+    // 🖥️ Stop screen sharing nếu đang share
+    if (_screenStream != null) {
+      for (final t in _screenStream!.getTracks()) {
+        t.stop();
+      }
+      await _screenStream!.dispose();
+    }
+
     if (_localStream != null) {
       for (final t in _localStream!.getTracks()) {
         t.stop();
@@ -492,6 +635,7 @@ class _P2PCallPageState extends State<P2PCallPage> {
       peer.renderer.dispose();
     }
 
+    _screenStream?.dispose(); // 🖥️ Dispose screen stream
     _localStream?.dispose();
     _localRenderer.dispose();
     super.dispose();
@@ -540,6 +684,19 @@ class _P2PCallPageState extends State<P2PCallPage> {
                     t.enabled = enabled;
                   });
                 },
+              ),
+              // 🖥️ Screen sharing button
+              IconButton(
+                icon: Icon(
+                  _isScreenSharing
+                      ? Icons.stop_screen_share
+                      : Icons.screen_share,
+                  color: _isScreenSharing ? Colors.green : null,
+                ),
+                onPressed: _toggleScreenSharing,
+                tooltip: _isScreenSharing
+                    ? 'Dừng chia sẻ màn hình'
+                    : 'Chia sẻ màn hình',
               ),
               IconButton(
                 icon: const Icon(Icons.call_end, color: Colors.red),
@@ -632,7 +789,7 @@ class _P2PCallPageState extends State<P2PCallPage> {
                 borderRadius: BorderRadius.circular(4),
               ),
               child: Text(
-                'You (Local)',
+                _isScreenSharing ? '🖥️ You (Sharing Screen)' : 'You (Local)',
                 style: const TextStyle(
                   color: Colors.white,
                   fontSize: 12,
