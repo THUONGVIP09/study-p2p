@@ -1,8 +1,9 @@
 import 'dart:convert';
-import 'dart:io';
 
+import 'package:flutter/foundation.dart'; // for kIsWeb
 import 'package:flutter/material.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
+import 'package:web_socket_channel/web_socket_channel.dart';
 
 import 'models/room.dart';
 import 'models/call_session.dart';
@@ -43,7 +44,7 @@ class _P2PCallPageState extends State<P2PCallPage> {
   MediaStream? _localStream;
   MediaStream? _screenStream; // 🖥️ Screen share stream
 
-  WebSocket? _ws;
+  WebSocketChannel? _ws;
   late final String _myUid;
 
   bool micMuted = false;
@@ -244,6 +245,38 @@ class _P2PCallPageState extends State<P2PCallPage> {
     try {
       debugPrint('🖥️ Starting screen share...');
 
+      // ⚠️ Check platform - Screen share chỉ hoạt động tốt trên Web
+      if (!kIsWeb) {
+        debugPrint('⚠️ Screen sharing on Desktop is experimental');
+
+        if (mounted) {
+          final shouldContinue = await showDialog<bool>(
+            context: context,
+            builder: (context) => AlertDialog(
+              title: Text('⚠️ Chức năng thử nghiệm'),
+              content: Text(
+                'Screen sharing trên Windows Desktop có thể không hoạt động.\n\n'
+                'Để sử dụng tốt nhất, vui lòng chạy ứng dụng trên Chrome:\n\n'
+                'flutter run -d chrome\n\n'
+                'Bạn có muốn thử tiếp không?',
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context, false),
+                  child: Text('Hủy'),
+                ),
+                TextButton(
+                  onPressed: () => Navigator.pop(context, true),
+                  child: Text('Thử'),
+                ),
+              ],
+            ),
+          );
+
+          if (shouldContinue != true) return;
+        }
+      }
+
       // Capture screen
       final screenStream = await navigator.mediaDevices.getDisplayMedia({
         'video': {
@@ -302,12 +335,60 @@ class _P2PCallPageState extends State<P2PCallPage> {
     } catch (e) {
       debugPrint('❌ Screen share failed: $e');
       _isScreenSharing = false;
+      setState(() {});
 
       if (mounted) {
+        // Thông báo lỗi rõ ràng hơn
+        String errorMessage;
+        if (e.toString().contains('source not found') ||
+            e.toString().contains('NotFoundError')) {
+          errorMessage = kIsWeb
+              ? '❌ Bạn đã hủy chia sẻ màn hình'
+              : '❌ Screen sharing không được hỗ trợ trên Desktop.\n\nVui lòng chạy: flutter run -d chrome';
+        } else if (e.toString().contains('Permission denied') ||
+            e.toString().contains('NotAllowedError')) {
+          errorMessage = '🚫 Bạn đã từ chối quyền chia sẻ màn hình';
+        } else {
+          errorMessage = '❌ Không thể chia sẻ màn hình: ${e.toString()}';
+        }
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('❌ Không thể chia sẻ màn hình: $e'),
-            duration: Duration(seconds: 3),
+            content: Text(errorMessage),
+            duration: Duration(seconds: 5),
+            action: kIsWeb
+                ? null
+                : SnackBarAction(
+                    label: 'Hướng dẫn',
+                    onPressed: () {
+                      showDialog(
+                        context: context,
+                        builder: (context) => AlertDialog(
+                          title: Text('💡 Cách sử dụng Screen Sharing'),
+                          content: SingleChildScrollView(
+                            child: Text(
+                              '🌐 Screen Sharing hoạt động tốt nhất trên Web Browser\n\n'
+                              '1️⃣ Đóng ứng dụng hiện tại\n\n'
+                              '2️⃣ Chạy lệnh sau:\n'
+                              '   flutter run -d chrome\n\n'
+                              '3️⃣ Hoặc:\n'
+                              '   flutter run -d edge\n\n'
+                              '4️⃣ Khi app mở trên browser, click nút Screen Share\n\n'
+                              '5️⃣ Chọn màn hình/cửa sổ muốn chia sẻ\n\n'
+                              '✅ Tất cả người trong room sẽ thấy màn hình của bạn!',
+                              style: TextStyle(fontSize: 14),
+                            ),
+                          ),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(context),
+                              child: Text('Đã hiểu'),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
           ),
         );
       }
@@ -373,29 +454,43 @@ class _P2PCallPageState extends State<P2PCallPage> {
     final uri = Uri.parse('$wsBase/ws');
     debugPrint('🔌 WS connect: $uri');
 
-    _ws = await WebSocket.connect(uri.toString());
-    _ws!.listen(
-      (data) {
-        debugPrint('📩 WS recv: $data');
-        final m = jsonDecode(data as String) as Map<String, dynamic>;
-        _onWsMessage(m);
-      },
-      onDone: () => debugPrint('WS closed'),
-      onError: (e) => debugPrint('WS error: $e'),
-    );
+    try {
+      _ws = WebSocketChannel.connect(uri);
 
-    _send({
-      't': 'join',
-      'room': widget.room.roomCode, // "R000001"
-      'uid': _myUid,
-      'name': 'User $_myUid',
-    });
+      _ws!.stream.listen(
+        (data) {
+          debugPrint('📩 WS recv: $data');
+          final m = jsonDecode(data as String) as Map<String, dynamic>;
+          _onWsMessage(m);
+        },
+        onDone: () => debugPrint('WS closed'),
+        onError: (e) => debugPrint('WS error: $e'),
+      );
+
+      _send({
+        't': 'join',
+        'room': widget.room.roomCode, // "R000001"
+        'uid': _myUid,
+        'name': 'User $_myUid',
+      });
+    } catch (e) {
+      debugPrint('❌ WS connection failed: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('❌ Kết nối WebSocket thất bại: $e'),
+            duration: Duration(seconds: 3),
+          ),
+        );
+      }
+    }
   }
 
   void _send(Map<String, dynamic> m) {
+    if (_ws == null) return;
     final txt = jsonEncode(m);
     debugPrint('📤 WS send: $txt');
-    _ws?.add(txt);
+    _ws!.sink.add(txt);
   }
 
   Future<void> _onWsMessage(Map<String, dynamic> m) async {
@@ -589,7 +684,7 @@ class _P2PCallPageState extends State<P2PCallPage> {
     } catch (_) {}
 
     try {
-      await _ws?.close();
+      await _ws?.sink.close();
     } catch (_) {}
 
     // 🌐 Đóng tất cả PeerConnections
@@ -628,7 +723,7 @@ class _P2PCallPageState extends State<P2PCallPage> {
 
   @override
   void dispose() {
-    _ws?.close();
+    _ws?.sink.close();
 
     for (final peer in _peers.values) {
       peer.pc?.close();
