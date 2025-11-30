@@ -196,13 +196,72 @@ class ApiService {
     final res = await http.post(uri, headers: headers, body: jsonEncode(body));
     final payload = _safeJson(utf8.decode(res.bodyBytes));
 
+    if (payload['success'] != true) {
+      throw Exception(payload['message'] ?? 'Join phòng thất bại');
+    }
+    // Backend rooms/join không trả Room; trả OK/PENDING_APPROVAL
+    // Client sẽ tiếp tục start/join call sau khi OK
+    return Room(
+      id: -1,
+      conversationId: -1,
+      name: '',
+      roomCode: roomCode,
+      description: null,
+      visibility: 'PUBLIC',
+      maxParticipants: null,
+      createdBy: uid,
+      isActive: true,
+      createdAt: null,
+    );
+  }
+
+  /// Lấy danh sách phòng do chính mình tạo – GET /api/rooms/mine
+  static Future<List<Room>> fetchMyRooms() async {
+    final headers = await _authHeaders();
+    final uri = Uri.parse('$baseUrl/api/rooms/mine');
+
+    final res = await http.get(uri, headers: headers);
+    final rawBody = utf8.decode(res.bodyBytes);
+    final payload = _safeJson(rawBody);
+
+    if (res.statusCode != 200 || payload['success'] != true) {
+      throw Exception(
+          payload['message'] ?? 'Lấy danh sách phòng của tôi thất bại');
+    }
+
+    final List<dynamic> data = payload['data'] ?? [];
+    return data.map((e) => Room.fromJson(e as Map<String, dynamic>)).toList();
+  }
+
+  /// Xóa phòng – DELETE /api/rooms/{roomId}
+  static Future<void> deleteRoom({required int roomId}) async {
+    final headers = await _authHeaders();
+    final uri = Uri.parse('$baseUrl/api/rooms/$roomId');
+
+    final res = await http.delete(uri, headers: headers);
+    final payload = _safeJson(utf8.decode(res.bodyBytes));
     if (res.statusCode < 200 ||
         res.statusCode >= 300 ||
         payload['success'] != true) {
-      throw Exception(payload['message'] ?? 'Join phòng thất bại');
+      throw Exception(payload['message'] ?? 'Xóa phòng thất bại');
+    }
+  }
+
+  /// Lấy số người đang ở trong phòng – GET /api/rooms/{roomId}/participants/count
+  static Future<int> getRoomParticipantsCount({required int roomId}) async {
+    final headers = await _authHeaders();
+    final uri = Uri.parse('$baseUrl/api/rooms/$roomId/participants/count');
+
+    final res = await http.get(uri, headers: headers);
+    final rawBody = utf8.decode(res.bodyBytes);
+    final payload = _safeJson(rawBody);
+
+    if (res.statusCode != 200 || payload['success'] != true) {
+      throw Exception(
+          payload['message'] ?? 'Lấy số người trong phòng thất bại');
     }
 
-    return Room.fromJson(payload['data'] as Map<String, dynamic>);
+    return (payload['data']?['count'] as int?) ?? 0;
   }
 
   // ================= NOTES =================

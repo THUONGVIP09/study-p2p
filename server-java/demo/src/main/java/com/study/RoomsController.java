@@ -12,6 +12,7 @@ import java.util.List;
 import com.study.dto.RoomDto;
 import com.study.dto.CreateRoomRequest;
 import com.study.dto.ApiResponse;
+import com.study.dto.JoinRoomRequest;
 
 @Path("/api/rooms")
 @Produces(MediaType.APPLICATION_JSON)
@@ -174,6 +175,56 @@ public class RoomsController {
         }
     }
 
+    // ========= JOIN ROOM (PRIVATE/PUBLIC/PROTECTED) =========
+    @POST
+    @Path("/join")
+    public Response joinRoom(JoinRoomRequest req) {
+        if ((req.roomCode() == null || req.roomCode().isBlank())) {
+            return bad("roomCode không hợp lệ");
+        }
+        // Giải mã roomCode -> roomId
+        long roomId = decodeRoomCode(req.roomCode());
+        if (roomId <= 0) return bad("roomCode không hợp lệ");
+
+        String sql = "SELECT visibility, passcode, created_by FROM rooms WHERE id = ?";
+        try (Connection con = Db.get(); PreparedStatement ps = con.prepareStatement(sql)) {
+            ps.setLong(1, roomId);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (!rs.next()) return bad("Room không tồn tại");
+                String vis = rs.getString("visibility");
+                String storedPass = rs.getString("passcode");
+                long hostId = rs.getLong("created_by");
+
+                vis = normalizeVisibility(vis);
+                switch (vis) {
+                    case "PUBLIC" -> {
+                        return Response.ok(new ApiResponse<>(true, "OK", null)).build();
+                    }
+                    case "PRIVATE" -> {
+                        String provided = req.passcode();
+                        if (storedPass == null || storedPass.isBlank()) {
+                            return bad("Phòng PRIVATE chưa thiết lập passcode");
+                        }
+                        if (provided == null || !storedPass.equals(provided)) {
+                            return bad("Passcode không đúng");
+                        }
+                        return Response.ok(new ApiResponse<>(true, "OK", null)).build();
+                    }
+                    case "PROTECTED" -> {
+                        // Chưa có cơ chế approve thực, trả về trạng thái pending để client hiển thị chờ
+                        return Response.ok(new ApiResponse<>(true, "PENDING_APPROVAL", null)).build();
+                    }
+                    default -> {
+                        return Response.ok(new ApiResponse<>(true, "OK", null)).build();
+                    }
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return server("Lỗi DB: " + e.getMessage());
+        }
+    }
+
     // ========= Helpers =========
 
     private String normalizeVisibility(String vis) {
@@ -189,6 +240,16 @@ public class RoomsController {
     // id -> "R000123"
     private String encodeRoomCode(long roomId) {
         return "R" + String.format("%06d", roomId);
+    }
+
+    private long decodeRoomCode(String roomCode) {
+        try {
+            if (roomCode == null || roomCode.length() < 2) return -1;
+            if (!roomCode.startsWith("R")) return -1;
+            return Long.parseLong(roomCode.substring(1));
+        } catch (Exception e) {
+            return -1;
+        }
     }
 
     private Response bad(String msg) {
