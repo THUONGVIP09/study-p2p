@@ -1,0 +1,20 @@
+@startuml
+title UC04 - Sơ đồ gói (Gửi lời mời)
+package "Flutter Client" {
+  [UI]
+  [FriendClient]
+  [ApiService]
+}
+package "Server" {
+  [FriendController]
+  [FriendService]
+}
+package "Persistence" {
+  [MySQL]
+}
+[UI] ..> [FriendClient]
+[FriendClient] ..> [ApiService]
+[ApiService] ..> [FriendController]
+[FriendController] ..> [FriendService]
+[FriendService] ..> [MySQL]
+@enduml

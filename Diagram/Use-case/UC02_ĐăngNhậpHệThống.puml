@@ -1,0 +1,31 @@
+@startuml
+title UC02 - Đăng nhập hệ thống
+left to right direction
+skinparam actorStyle awesome
+skinparam usecase {
+  BackgroundColor #EEF7FF
+  BorderColor #2D6CDF
+}
+
+actor "Người dùng" as User
+
+rectangle "Hệ thống Study P2P" {
+  usecase "UC02\nĐăng nhập hệ thống" as UC02
+  usecase "UC11\nXem danh sách phòng" as UC11
+  usecase "UC12\nTìm kiếm phòng" as UC12
+}
+
+User --> UC02
+UC02 <|-- UC11 : <<extend>>\n(truy cập sau đăng nhập)
+UC02 <|-- UC12 : <<extend>>
+
+note right of UC02
+Tiền điều kiện:
+- Tài khoản hợp lệ đã được đăng ký.
+Hậu điều kiện:
+- Tạo phiên (JWT/Session), truy cập chức năng hệ thống.
+Ràng buộc:
+- Khoá tài khoản → từ chối đăng nhập.
+end note
+
+@enduml

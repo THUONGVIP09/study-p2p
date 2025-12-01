@@ -1,0 +1,46 @@
+@startuml
+title Use Case - Mạng xã hội, Chat, Task, Thông báo
+left to right direction
+skinparam actorStyle awesome
+
+actor "Người dùng" as User
+actor "Người nhận lời mời" as Invitee
+
+rectangle "Mạng xã hội" {
+  usecase "UC03\nTìm kiếm người dùng" as UC03
+  usecase "UC04\nGửi lời mời kết bạn" as UC04
+  usecase "UC05\nChấp nhận lời mời" as UC05
+  usecase "UC06\nTừ chối lời mời" as UC06
+  usecase "UC07\nXem danh sách bạn bè" as UC07
+  usecase "UC08\nHủy kết bạn" as UC08
+  usecase "UC09\nBlock người dùng" as UC09
+}
+
+rectangle "Chat & Thông báo" {
+  usecase "UC22\nGửi tin nhắn chat" as UC22
+  usecase "UC23\nXem lịch sử chat" as UC23
+  usecase "UC26\nXem thông báo" as UC26
+}
+
+rectangle "Tasks" {
+  usecase "UC24\nTạo task/nhắc nhở" as UC24
+  usecase "UC25\nCập nhật trạng thái task" as UC25
+}
+
+User --> UC03
+User --> UC04
+Invitee --> UC05
+Invitee --> UC06
+User --> UC07
+User --> UC08
+User --> UC09
+User --> UC22
+User --> UC23
+User --> UC26
+User --> UC24
+User --> UC25
+
+UC22 <|-- UC23 : <<extend>>
+UC24 <|-- UC25 : <<extend>>
+
+@enduml

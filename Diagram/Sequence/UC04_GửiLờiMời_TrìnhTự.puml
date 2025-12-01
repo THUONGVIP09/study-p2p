@@ -1,0 +1,22 @@
+@startuml
+title UC04 - Trình tự Gửi lời mời kết bạn
+actor "Người dùng" as User
+participant "Flutter UI" as UI
+participant "FriendClient" as FriendCli
+participant "ApiService" as Api
+participant "FriendController" as FriendCtrl
+participant "FriendService (server)" as FriendSvc
+database "MySQL" as DB
+
+User -> UI: Nhấn "Kết bạn"
+UI -> FriendCli: sendRequest(targetId)
+FriendCli -> Api: POST /friends/requests
+Api -> FriendCtrl: /friends/requests
+FriendCtrl -> FriendSvc: createRequest(requesterId, targetId)
+FriendSvc -> DB: INSERT friend_requests(pending)
+DB --> FriendSvc: requestId
+FriendSvc --> FriendCtrl: ok
+FriendCtrl --> Api: 201
+Api --> FriendCli: ok
+FriendCli -> UI: Hiển thị trạng thái "Đã gửi"
+@enduml

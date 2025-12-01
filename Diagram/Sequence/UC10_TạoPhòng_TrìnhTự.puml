@@ -1,0 +1,22 @@
+@startuml
+title UC10 - Trình tự Tạo phòng học
+actor "Người dùng" as User
+participant "Flutter UI" as UI
+participant "RoomService (client)" as RoomCli
+participant "ApiService (client)" as Api
+participant "RoomController (server)" as RoomCtrl
+participant "RoomService (server)" as RoomSvc
+database "MySQL" as DB
+
+User -> UI: Nhập tên phòng, visibility, passcode(optional)
+UI -> RoomCli: validate(roomForm)
+RoomCli -> Api: POST /rooms
+Api -> RoomCtrl: /rooms
+RoomCtrl -> RoomSvc: createRoom(dto)
+RoomSvc -> DB: INSERT room
+DB --> RoomSvc: roomId
+RoomSvc --> RoomCtrl: RoomDTO
+RoomCtrl --> Api: 201 + RoomDTO
+Api --> RoomCli: RoomDTO
+RoomCli -> UI: Hiển thị phòng vừa tạo
+@enduml

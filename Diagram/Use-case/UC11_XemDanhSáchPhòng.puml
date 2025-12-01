@@ -1,0 +1,33 @@
+@startuml
+title UC11 - Xem danh sách phòng
+left to right direction
+skinparam actorStyle awesome
+skinparam usecase {
+  BackgroundColor #EEF7FF
+  BorderColor #2D6CDF
+}
+
+actor "Người dùng" as User
+
+rectangle "Hệ thống Study P2P" {
+  usecase "UC11\nXem danh sách phòng" as UC11
+  usecase "UC12\nTìm kiếm phòng" as UC12
+  usecase "UC13\nTham gia phòng PUBLIC" as UC13
+  usecase "UC14\nTham gia phòng PRIVATE" as UC14
+}
+
+User --> UC11
+UC11 <|-- UC12 : <<extend>>\n(lọc/tìm kiếm)
+UC11 <|-- UC13 : <<extend>>\n(join từ danh sách)
+UC11 <|-- UC14 : <<extend>>
+
+note right of UC11
+Tiền điều kiện:
+- Người dùng đã đăng nhập.
+Hậu điều kiện:
+- Hiển thị danh sách phòng theo quyền truy cập.
+Ràng buộc:
+- Phân trang, bộ lọc trạng thái/visibility.
+end note
+
+@enduml

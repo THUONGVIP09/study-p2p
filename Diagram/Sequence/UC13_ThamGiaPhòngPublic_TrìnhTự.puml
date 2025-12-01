@@ -1,0 +1,22 @@
+@startuml
+title UC13 - Trình tự Tham gia phòng PUBLIC
+actor "Người dùng" as User
+participant "Flutter UI" as UI
+participant "RoomClient" as RoomCli
+participant "ApiService" as Api
+participant "RoomController" as RoomCtrl
+participant "RoomService (server)" as RoomSvc
+database "MySQL" as DB
+
+User -> UI: Chọn phòng PUBLIC từ danh sách
+UI -> RoomCli: joinPublic(roomId)
+RoomCli -> Api: POST /rooms/{id}/join
+Api -> RoomCtrl: /rooms/{id}/join
+RoomCtrl -> RoomSvc: addParticipant(roomId, userId)
+RoomSvc -> DB: INSERT participant
+DB --> RoomSvc: ok
+RoomSvc --> RoomCtrl: participant added
+RoomCtrl --> Api: 200 OK
+Api --> RoomCli: OK
+RoomCli -> UI: Điều hướng vào phòng/call
+@enduml

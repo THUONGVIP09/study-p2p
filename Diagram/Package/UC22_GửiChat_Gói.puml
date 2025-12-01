@@ -1,0 +1,20 @@
+@startuml
+title UC22 - Sơ đồ gói (Gửi chat)
+package "Flutter Client" {
+  [Chat UI]
+  [ChatController]
+  [WebSocketClient]
+}
+package "Server" {
+  [SignalingEndpoint]
+  [MessageService]
+}
+package "Persistence" {
+  [MySQL]
+}
+[Chat UI] ..> [ChatController]
+[ChatController] ..> [WebSocketClient]
+[WebSocketClient] ..> [SignalingEndpoint] : WebSocket
+[SignalingEndpoint] ..> [MessageService]
+[MessageService] ..> [MySQL]
+@enduml

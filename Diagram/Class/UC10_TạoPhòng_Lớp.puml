@@ -1,0 +1,30 @@
+@startuml
+title UC10 - Sơ đồ lớp (Tạo phòng)
+class RoomClient {
+  - ApiService api
+  + Future<Room> createRoom(RoomForm)
+}
+class ApiService {
+  + Future<Response> post(url, body)
+}
+class RoomForm {
+  + name: String
+  + visibility: Enum
+  + passcode: String?
+}
+class Room {
+  + id: String
+  + name: String
+  + visibility: Enum
+  + hostId: String
+}
+class RoomController {
+  + RoomDTO createRoom(RoomDTO)
+}
+class RoomService {
+  + Room create(dto)
+}
+RoomClient --> ApiService
+RoomController --> RoomService
+RoomService --> Room
+@enduml

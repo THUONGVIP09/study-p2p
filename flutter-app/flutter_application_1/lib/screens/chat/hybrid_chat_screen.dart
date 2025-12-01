@@ -4,6 +4,7 @@ import '../../services/hybrid_chat_service.dart';
 import '../../services/p2p_chat_service.dart';
 import '../../services/chat_storage_service.dart';
 import '../../services/network_helper.dart';
+import '../../services/api_service.dart';
 import '../../config/app_config.dart';
 
 class HybridChatScreen extends StatefulWidget {
@@ -152,6 +153,146 @@ class _HybridChatScreenState extends State<HybridChatScreen> {
     print('✅ [UI] Widget dispose completed');
   }
 
+  Future<void> _showChatSummary() async {
+    try {
+      // Kiểm tra ML service health
+      final isHealthy = await ApiService.checkMLServiceHealth();
+      if (!isHealthy) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'ML Service không khả dụng. Vui lòng khởi động ml-service trước.',
+            ),
+            backgroundColor: Colors.orange,
+          ),
+        );
+        return;
+      }
+
+      // Hiển thị loading
+      if (!mounted) return;
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const Center(
+          child: Card(
+            child: Padding(
+              padding: EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  CircularProgressIndicator(),
+                  SizedBox(height: 16),
+                  Text('Đang tóm tắt cuộc trò chuyện...'),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+
+      // Gọi API tóm tắt conversation
+      final result = await ApiService.summarizeConversation(
+        friendId: widget.friendId,
+        limit: 100,
+        maxLength: 150,
+        minLength: 40,
+      );
+
+      if (!mounted) return;
+      Navigator.pop(context); // Đóng loading
+
+      // Hiển thị kết quả
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Row(
+            children: [
+              Icon(Icons.summarize, color: Colors.blue.shade700),
+              const SizedBox(width: 8),
+              const Text('Tóm tắt Chat'),
+            ],
+          ),
+          content: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Summary text
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.shade50,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    result['summary'] ?? 'Không có tóm tắt',
+                    style: const TextStyle(fontSize: 14),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                // Key points
+                const Text(
+                  'Điểm chính:',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                ...(result['keyPoints'] as List<dynamic>? ?? [])
+                    .map((point) => Padding(
+                          padding: const EdgeInsets.only(bottom: 6),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text('• ', style: TextStyle(fontSize: 16)),
+                              Expanded(
+                                child: Text(
+                                  point.toString(),
+                                  style: const TextStyle(fontSize: 13),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ))
+                    .toList(),
+                const SizedBox(height: 12),
+                // Stats
+                Text(
+                  'Số tin nhắn: ${result['messageCount'] ?? 0}',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey.shade600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Đóng'),
+            ),
+          ],
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      // Đóng loading nếu đang mở
+      if (Navigator.canPop(context)) {
+        Navigator.pop(context);
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Lỗi khi tóm tắt: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
   Future<void> _send() async {
     if (_isSending || _isLoading) return; // Block nếu đang gửi hoặc loading
 
@@ -199,13 +340,22 @@ class _HybridChatScreenState extends State<HybridChatScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('Chat with ${widget.friendName}'), actions: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          child: Center(
-              child: Text(_status, style: const TextStyle(fontSize: 12))),
-        )
-      ]),
+      appBar: AppBar(
+        title: Text('Chat with ${widget.friendName}'),
+        actions: [
+          // Chat Summary button
+          IconButton(
+            icon: const Icon(Icons.summarize),
+            onPressed: _showChatSummary,
+            tooltip: 'Tóm tắt chat',
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            child: Center(
+                child: Text(_status, style: const TextStyle(fontSize: 12))),
+          )
+        ],
+      ),
       body: Stack(
         children: [
           Column(children: [
