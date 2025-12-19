@@ -105,19 +105,7 @@ class _SignUpPasswordScreenState extends State<SignUpPasswordScreen> {
                             ],
                           ),
                           const SizedBox(height: 24),
-                          Text(
-                            'MaroMart',
-                            style: theme.textTheme.headlineSmall?.copyWith(
-                                fontWeight: FontWeight.w800,
-                                color: Colors.white),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            'MaroMart, the easy way for people to buy, sell, and connect with each other.',
-                            style: theme.textTheme.bodyMedium?.copyWith(
-                                color: Colors.white.withOpacity(0.85),
-                                height: 1.5),
-                          ),
+                          
                           const SizedBox(height: 20),
                           _GlassField(
                             controller: _pw,
