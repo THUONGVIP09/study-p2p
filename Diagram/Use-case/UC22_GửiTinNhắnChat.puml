@@ -1,0 +1,29 @@
+@startuml
+title UC22 - Gửi tin nhắn chat
+left to right direction
+skinparam actorStyle awesome
+skinparam usecase {
+  BackgroundColor #EEF7FF
+  BorderColor #2D6CDF
+}
+
+actor "Người dùng" as User
+
+rectangle "Hệ thống Study P2P" {
+  usecase "UC22\nGửi tin nhắn chat" as UC22
+  usecase "UC23\nXem lịch sử chat" as UC23
+}
+
+User --> UC22
+UC22 <|-- UC23 : <<extend>>\n(xem lại lịch sử)
+
+note right of UC22
+Tiền điều kiện:
+- Người dùng ở phòng/chat; có quyền gửi.
+Hậu điều kiện:
+- Tin nhắn được lưu DB và broadcast tới phòng.
+Ràng buộc:
+- Kiểm duyệt nội dung; giới hạn độ dài.
+end note
+
+@enduml

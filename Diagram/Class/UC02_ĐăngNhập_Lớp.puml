@@ -1,0 +1,30 @@
+@startuml
+title UC02 - Sơ đồ lớp (Đăng nhập)
+class AuthService {
+  - ApiService api
+  + Future<Token> login(email, password)
+}
+class ApiService {
+  + Future<Response> post(url, body)
+}
+class Token {
+  + String accessToken
+  + DateTime expiresAt
+}
+class AuthController {
+  + Response login(LoginRequest)
+}
+class UserService {
+  + User findByEmail(email)
+  + boolean verifyPassword(user, pwd)
+}
+class User {
+  + id: Long
+  + email: String
+  + passwordHash: String
+  + displayName: String
+}
+AuthService --> ApiService
+AuthController --> UserService
+UserService --> User
+@enduml

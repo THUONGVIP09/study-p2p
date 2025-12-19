@@ -1,0 +1,26 @@
+@startuml
+title UC22 - Sơ đồ lớp (Gửi chat)
+class ChatController {
+  + onSend(text)
+  + handleIncoming(msg)
+}
+class WebSocketClient {
+  + send(type, payload)
+}
+class ChatMessage {
+  + messageId: String
+  + senderId: String
+  + text: String
+  + timestamp: DateTime
+}
+class SignalingEndpoint {
+  + onMessage(session, msg)
+}
+class MessageService {
+  + save(roomId, senderId, text): Message
+}
+ChatController --> WebSocketClient
+ChatController --> ChatMessage
+SignalingEndpoint --> MessageService
+MessageService --> ChatMessage
+@enduml

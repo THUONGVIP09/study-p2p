@@ -1,0 +1,31 @@
+@startuml
+title UC09 - Block người dùng
+left to right direction
+skinparam actorStyle awesome
+skinparam usecase {
+  BackgroundColor #EEF7FF
+  BorderColor #2D6CDF
+}
+
+actor "Người dùng" as User
+
+rectangle "Hệ thống Study P2P" {
+  usecase "UC09\nBlock người dùng" as UC09
+  usecase "UC08\nHủy kết bạn" as UC08
+  usecase "UC22\nGửi tin nhắn chat" as UC22
+}
+
+User --> UC09
+UC09 .down.|> UC08 : <<include>>\n(nếu là bạn → hủy)
+UC09 .down.|> UC22 : <<extend>>\n(chặn chat)
+
+note right of UC09
+Tiền điều kiện:
+- Người dùng đã đăng nhập.
+Hậu điều kiện:
+- Đối tượng bị chặn: không thể chat/mời kết bạn.
+Ràng buộc:
+- Có thể bỏ chặn sau này.
+end note
+
+@enduml

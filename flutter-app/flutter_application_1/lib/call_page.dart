@@ -85,6 +85,37 @@ class _P2PCallPageState extends State<P2PCallPage> {
   Widget _buildChatPanel() {
     return Column(
       children: [
+        // Chat Summary Button
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          decoration: BoxDecoration(
+            color: Colors.purple.shade50,
+            border: Border(bottom: BorderSide(color: Colors.purple.shade100)),
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'Chat trong cuộc gọi',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    color: Colors.purple.shade700,
+                  ),
+                ),
+              ),
+              TextButton.icon(
+                onPressed: _showChatSummary,
+                icon: const Icon(Icons.summarize, size: 18),
+                label: const Text('Tóm tắt'),
+                style: TextButton.styleFrom(
+                  foregroundColor: Colors.purple.shade700,
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                ),
+              ),
+            ],
+          ),
+        ),
         Expanded(
           child: ListView.builder(
             padding: const EdgeInsets.all(12),
@@ -1026,6 +1057,143 @@ class _P2PCallPageState extends State<P2PCallPage> {
   }
 
   // ================== LEAVE / CLEANUP ==================
+
+  Future<void> _showChatSummary() async {
+    try {
+      // Kiểm tra ML service health trước
+      final isHealthy = await ApiService.checkMLServiceHealth();
+      if (!isHealthy) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'ML Service không khả dụng. Vui lòng khởi động ml-service trước.',
+            ),
+            backgroundColor: Colors.orange,
+          ),
+        );
+        return;
+      }
+
+      // Hiển thị loading
+      if (!mounted) return;
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const Center(
+          child: Card(
+            child: Padding(
+              padding: EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  CircularProgressIndicator(),
+                  SizedBox(height: 16),
+                  Text('Đang tóm tắt chat...'),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+
+      // Gọi API tóm tắt
+      final result = await ApiService.summarizeRoomChat(
+        roomId: widget.room.id,
+        limit: 100,
+        maxLength: 150,
+        minLength: 40,
+      );
+
+      if (!mounted) return;
+      Navigator.pop(context); // Đóng loading
+
+      // Hiển thị kết quả
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Row(
+            children: [
+              Icon(Icons.summarize, color: Colors.purple.shade700),
+              const SizedBox(width: 8),
+              const Text('Tóm tắt Chat'),
+            ],
+          ),
+          content: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Summary text
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.purple.shade50,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    result['summary'] ?? 'Không có tóm tắt',
+                    style: const TextStyle(fontSize: 14),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                // Key points
+                const Text(
+                  'Điểm chính:',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                ...(result['keyPoints'] as List<dynamic>? ?? [])
+                    .map((point) => Padding(
+                          padding: const EdgeInsets.only(bottom: 6),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text('• ', style: TextStyle(fontSize: 16)),
+                              Expanded(
+                                child: Text(
+                                  point.toString(),
+                                  style: const TextStyle(fontSize: 13),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ))
+                    .toList(),
+                const SizedBox(height: 12),
+                // Stats
+                Text(
+                  'Số tin nhắn: ${result['messageCount'] ?? 0}',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey.shade600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Đóng'),
+            ),
+          ],
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      Navigator.pop(context); // Đóng loading nếu đang mở
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Lỗi khi tóm tắt: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
 
   Future<void> _leave() async {
     try {

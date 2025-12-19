@@ -1,0 +1,20 @@
+@startuml
+title UC13 - Sơ đồ lớp (Join phòng PUBLIC)
+class RoomClient {
+  - ApiService api
+  + Future<void> joinPublic(roomId)
+}
+class ApiService {
+  + Future<Response> post(url, body)
+}
+class RoomService {
+  + void addParticipant(roomId, userId)
+}
+class Participant {
+  + roomId: String
+  + userId: String
+  + role: Enum
+}
+RoomClient --> ApiService
+RoomService --> Participant
+@enduml

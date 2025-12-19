@@ -5,6 +5,7 @@ import 'call_page.dart';
 import 'package:flutter_application_1/screens/tasks/tasks_list.dart';
 import 'package:flutter_application_1/screens/chat/conversations_screen.dart';
 import 'package:flutter_application_1/widgets/server_ip_indicator.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class HomeShell extends StatefulWidget {
   const HomeShell({super.key});
@@ -19,20 +20,14 @@ class _HomeShellState extends State<HomeShell> {
   // Danh sách tab (icon gần giống ảnh)
   final tabs = <_TabItem>[
     _TabItem(icon: Icons.videocam_off_rounded, label: 'Call'),
-    _TabItem(icon: Icons.brush_rounded, label: 'Whiteboard'),
-    _TabItem(icon: Icons.event_rounded, label: 'Calendar'),
     _TabItem(icon: Icons.description_rounded, label: 'Notes'),
     _TabItem(icon: Icons.group_rounded, label: 'Members'),
     _TabItem(icon: Icons.chat_bubble_rounded, label: 'Chat'),
-    _TabItem(icon: Icons.format_color_fill, label: 'Tools'),
-    _TabItem(icon: Icons.flag_rounded, label: 'Flags'),
   ];
 
   // Ba nút mờ phía dưới (chưa active)
   final trailing = const [
-    _DisabledIcon(icon: Icons.music_note_rounded),
-    _DisabledIcon(icon: Icons.notifications_rounded),
-    _DisabledIcon(icon: Icons.account_circle_rounded),
+    _UserAvatarMenu(),
   ];
 
   @override
@@ -83,13 +78,9 @@ class _HomeShellState extends State<HomeShell> {
                   index: index,
                   children: [
                     const RoomsPage(),
-                    const _PlaceholderPage('Whiteboard'), // Tab 1
-                    const _PlaceholderPage('Calendar'), // Tab 2
-                    const TasksListScreen(), // Tab 3: Tasks
-                    const FriendsScreen(), // Tab 4: Members
-                    const ConversationsScreen(), // Tab 5: Conversations (Messages)
-                    const _PlaceholderPage('Tools'), // Tab 6
-                    const _PlaceholderPage('Flags'), // Tab 7
+                    const TasksListScreen(), // Notes -> Tasks
+                    const FriendsScreen(), // Members
+                    const ConversationsScreen(), // Conversations (Messages)
                   ],
                 ),
               ),
@@ -130,6 +121,159 @@ class _PlaceholderPage extends StatelessWidget {
         child: Text(title,
             style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w600)),
       ),
+    );
+  }
+}
+
+class _UserAvatarMenu extends StatefulWidget {
+  const _UserAvatarMenu({super.key});
+
+  @override
+  State<_UserAvatarMenu> createState() => _UserAvatarMenuState();
+}
+
+class _UserAvatarMenuState extends State<_UserAvatarMenu> {
+  String? _userName;
+  String? _userEmail;
+  int? _userId;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUser();
+  }
+
+  Future<void> _loadUser() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _userId = prefs.getInt('userId');
+      _userEmail = prefs.getString('userEmail');
+      _userName = prefs.getString('userName');
+    });
+  }
+
+  Future<void> _saveProfile(String? name, String? email) async {
+    final prefs = await SharedPreferences.getInstance();
+    if (name != null) await prefs.setString('userName', name);
+    if (email != null) await prefs.setString('userEmail', email);
+    await _loadUser();
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Đã lưu thông tin người dùng')),
+    );
+  }
+
+  Future<void> _logout() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('userId');
+    await prefs.remove('userEmail');
+    await prefs.remove('userName');
+    if (!mounted) return;
+    Navigator.pushNamedAndRemoveUntil(context, '/signin', (route) => false);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final initials = (_userName ?? 'U').isNotEmpty
+        ? _userName!
+            .trim()
+            .split(' ')
+            .map((w) => w.isNotEmpty ? w[0] : '')
+            .take(2)
+            .join()
+            .toUpperCase()
+        : 'U';
+
+    return InkWell(
+      onTap: () => _openMenu(context),
+      borderRadius: BorderRadius.circular(20),
+      child: CircleAvatar(
+        radius: 16,
+        backgroundColor: Colors.white24,
+        child: Text(initials, style: const TextStyle(color: Colors.white)),
+      ),
+    );
+  }
+
+  void _openMenu(BuildContext context) {
+    final nameCtrl = TextEditingController(text: _userName ?? '');
+    final emailCtrl = TextEditingController(text: _userEmail ?? '');
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (ctx) {
+        return Padding(
+          padding: EdgeInsets.only(
+            left: 16,
+            right: 16,
+            top: 16,
+            bottom: MediaQuery.of(ctx).viewInsets.bottom + 16,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  const Icon(Icons.account_circle, size: 28),
+                  const SizedBox(width: 8),
+                  const Text('Tài khoản',
+                      style:
+                          TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+                  const Spacer(),
+                  if (_userId != null)
+                    Text('#${_userId}',
+                        style: const TextStyle(color: Colors.black54)),
+                ],
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: nameCtrl,
+                decoration: const InputDecoration(labelText: 'Tên hiển thị'),
+              ),
+              const SizedBox(height: 8),
+              TextField(
+                controller: emailCtrl,
+                decoration: const InputDecoration(labelText: 'Email'),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  ElevatedButton.icon(
+                    onPressed: () async {
+                      await _saveProfile(
+                        nameCtrl.text.trim().isEmpty
+                            ? null
+                            : nameCtrl.text.trim(),
+                        emailCtrl.text.trim().isEmpty
+                            ? null
+                            : emailCtrl.text.trim(),
+                      );
+                      if (Navigator.canPop(context)) Navigator.pop(context);
+                    },
+                    icon: const Icon(Icons.save),
+                    label: const Text('Lưu'),
+                  ),
+                  const SizedBox(width: 12),
+                  OutlinedButton.icon(
+                    onPressed: () async {
+                      await _logout();
+                      if (Navigator.canPop(context)) Navigator.pop(context);
+                    },
+                    icon: const Icon(Icons.logout),
+                    label: const Text('Đăng xuất'),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }
