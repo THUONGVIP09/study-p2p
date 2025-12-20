@@ -4,11 +4,14 @@ import 'package:flutter/foundation.dart'; // for kIsWeb
 import 'package:flutter/material.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
+import 'package:network_info_plus/network_info_plus.dart';
 
 import 'models/room.dart';
 import 'models/call_session.dart';
 import 'models/chat_message.dart';
 import 'services/api_service.dart';
+import 'services/p2p_tcp_server.dart';
+import 'services/local_message_storage.dart';
 
 class P2PCallPage extends StatefulWidget {
   final Room room;
@@ -53,6 +56,12 @@ class _P2PCallPageState extends State<P2PCallPage> {
 
   WebSocketChannel? _ws;
   late final String _myUid;
+
+  // P2P Chat
+  P2PTcpServer? _p2pServer;
+  final Map<String, Map<String, dynamic>> _roomPeers =
+      {}; // uid -> {name, ip, port}
+  String? _myLocalIp;
 
   bool micMuted = false;
   bool camEnabled = true;
@@ -261,21 +270,56 @@ class _P2PCallPageState extends State<P2PCallPage> {
     final text = _chatController.text.trim();
     if (text.isEmpty) return;
     _chatController.clear();
+
+    final timestamp = DateTime.now();
     final msg = ChatMessage(
-      id: '${DateTime.now().microsecondsSinceEpoch}',
+      id: '${timestamp.microsecondsSinceEpoch}',
       senderId: widget.currentUserId,
       senderName: widget.displayName ?? 'You',
       text: text,
-      timestamp: DateTime.now(),
+      timestamp: timestamp,
       isSelf: true,
     );
+
     setState(() {
       _messages.add(msg);
     });
     _scrollChatToBottom();
-    _awaitEchoText = text;
-    // TODO: Send over signaling WS
-    _sendChatSignal(text);
+
+    // Save locally
+    LocalMessageStorage.saveMessage(
+      roomCode: widget.room.roomCode,
+      senderId: widget.currentUserId,
+      senderName: widget.displayName ?? 'You',
+      text: text,
+      timestamp: timestamp,
+      synced: false,
+    );
+
+    // Send via P2P to all peers in room
+    _broadcastToPeersP2P(
+        text, widget.currentUserId, widget.displayName ?? 'You', timestamp);
+  }
+
+  Future<void> _broadcastToPeersP2P(
+      String text, int senderId, String senderName, DateTime timestamp) async {
+    if (_roomPeers.isEmpty) {
+      debugPrint('⚠️ No peers to broadcast to');
+      return;
+    }
+
+    final message = {
+      'type': 'chat',
+      'senderId': senderId,
+      'senderName': senderName,
+      'text': text,
+      'timestamp': timestamp.toIso8601String(),
+    };
+
+    final peerIps = _roomPeers.values.map((p) => p['ip'] as String).toList();
+    if (_p2pServer != null) {
+      await _p2pServer!.broadcastToPeers(peerIps, message);
+    }
   }
 
   void _handleIncomingChat(
@@ -330,8 +374,61 @@ class _P2PCallPageState extends State<P2PCallPage> {
     });
   }
 
+  // ================== P2P TCP SERVER ==================
+
+  Future<void> _initP2PServer() async {
+    try {
+      final info = NetworkInfo();
+      _myLocalIp = await info.getWifiIP();
+
+      if (_myLocalIp == null) {
+        debugPrint('⚠️ Cannot get local IP');
+        return;
+      }
+
+      _p2pServer = P2PTcpServer();
+      _p2pServer!.onMessageReceived = (msg) {
+        // Nhận tin nhắn từ peer khác
+        if (msg['type'] == 'chat') {
+          final senderId = msg['senderId'] as int?;
+          final senderName = msg['senderName'] as String?;
+          final text = msg['text'] as String?;
+          final timestamp = msg['timestamp'] as String?;
+
+          if (senderId != null &&
+              senderName != null &&
+              text != null &&
+              timestamp != null) {
+            final ts = DateTime.tryParse(timestamp) ?? DateTime.now();
+            _handleIncomingChat(senderId, senderName, text, ts);
+
+            // Lưu vào local storage
+            LocalMessageStorage.saveMessage(
+              roomCode: widget.room.roomCode,
+              senderId: senderId,
+              senderName: senderName,
+              text: text,
+              timestamp: ts,
+              synced: false, // Chưa sync lên server
+            );
+          }
+        }
+      };
+
+      final started = await _p2pServer!.start();
+      if (started) {
+        debugPrint('✅ P2P server started on $_myLocalIp:9999');
+      }
+    } catch (e) {
+      debugPrint('❌ Failed to init P2P server: $e');
+    }
+  }
+
   Future<void> _initAll() async {
     await _localRenderer.initialize();
+
+    // Init P2P TCP server first
+    await _initP2PServer();
 
     // Luôn bật local trước
     await _startLocalStream();
@@ -758,6 +855,8 @@ class _P2PCallPageState extends State<P2PCallPage> {
         'uid': _myUid,
         'name': widget.displayName ?? 'User ${widget.currentUserId}',
         'userId': widget.currentUserId,
+        'peerIp': _myLocalIp ?? '127.0.0.1',
+        'peerPort': '9999',
       });
     } catch (e) {
       debugPrint('❌ WS connection failed: $e');
@@ -784,7 +883,7 @@ class _P2PCallPageState extends State<P2PCallPage> {
 
     switch (t) {
       case 'peers':
-        // 🌐 Backend gửi danh sách peers đang có trong room
+        // 🌐 Backend gửi danh sách peers đang có trong room (bao gồm P2P info)
         final peersList = (m['peers'] as List<dynamic>? ?? []);
         debugPrint('📋 Received peers: ${peersList.length}');
 
@@ -792,6 +891,8 @@ class _P2PCallPageState extends State<P2PCallPage> {
           final peerData = p as Map<String, dynamic>;
           final uid = peerData['uid'] as String;
           final name = peerData['name'] as String? ?? uid;
+          final ip = peerData['ip'] as String?;
+          final port = peerData['port'] as String?;
 
           // Skip nếu đây là chính mình (duplicate connection)
           if (uid == _myUid ||
@@ -802,6 +903,19 @@ class _P2PCallPageState extends State<P2PCallPage> {
             continue;
           }
 
+          // Store peer info for P2P
+          if (ip != null) {
+            setState(() {
+              _roomPeers[uid] = {
+                'name': name,
+                'ip': ip,
+                'port': port ?? '9999'
+              };
+            });
+            debugPrint(
+                '👤 Peer added to P2P list: $name ($uid) at $ip:${port ?? "9999"}');
+          }
+
           await _addPeer(uid, name);
 
           // Mình vào sau → mình gọi offer cho từng peer có sẵn
@@ -810,9 +924,11 @@ class _P2PCallPageState extends State<P2PCallPage> {
         break;
 
       case 'peer.joined':
-        // 🌐 Có người mới join vào room
+        // 🌐 Có người mới join vào room (kèm P2P info)
         final uid = m['uid'] as String?;
         final name = m['name'] as String?;
+        final ip = m['ip'] as String?;
+        final port = m['port'] as String?;
         if (uid == null || name == null) return;
 
         // Skip nếu đây là chính mình (duplicate connection)
@@ -821,6 +937,15 @@ class _P2PCallPageState extends State<P2PCallPage> {
             uid.startsWith('host_${widget.currentUserId}_')) {
           debugPrint('⚠️ Skip duplicate peer: $uid (same user)');
           return;
+        }
+
+        // Store peer info for P2P
+        if (ip != null) {
+          setState(() {
+            _roomPeers[uid] = {'name': name, 'ip': ip, 'port': port ?? '9999'};
+          });
+          debugPrint(
+              '👤 New peer for P2P: $name ($uid) at $ip:${port ?? "9999"}');
         }
 
         debugPrint('🚪 Peer joined: $uid ($name)');

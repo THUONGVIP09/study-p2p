@@ -13,7 +13,6 @@ import com.study.dto.EndCallRequest;
 import com.study.dto.HeartbeatRequest;
 import com.study.dto.JoinCallRequest;
 import com.study.dto.StartCallRequest;
-import com.study.Db;
 
 @Path("/api/calls")
 @Produces(MediaType.APPLICATION_JSON)

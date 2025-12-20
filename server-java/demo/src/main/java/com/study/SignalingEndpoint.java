@@ -29,6 +29,8 @@ public class SignalingEndpoint {
     String name;
     String room;     // roomCode dạng ROOM-0001
     Long userId;     // DB user ID nếu có
+    String peerIp;   // Local IP của device (cho P2P)
+    String peerPort; // Port TCP server (default 9999)
     Instant at = Instant.now();
   }
 
@@ -87,6 +89,8 @@ public class SignalingEndpoint {
         String uid  = m.has("uid")  ? m.get("uid").getAsString()  : UUID.randomUUID().toString();
         String name = m.has("name") ? m.get("name").getAsString() : ("U-" + uid.substring(0, 6));
         Long userId = m.has("userId") ? m.get("userId").getAsLong() : null;
+        String peerIp = m.has("peerIp") ? m.get("peerIp").getAsString() : "127.0.0.1";
+        String peerPort = m.has("peerPort") ? m.get("peerPort").getAsString() : "9999";
 
         // Nếu có userId, ưu tiên lấy display_name từ DB để hiển thị đúng
         if (userId != null) {
@@ -114,17 +118,23 @@ public class SignalingEndpoint {
         }
 
         ClientCtx ctx = CLIENTS.get(s);
-        ctx.uid = uid; ctx.name = name; ctx.room = roomCode; ctx.userId = userId;
+        ctx.uid = uid; ctx.name = name; ctx.room = roomCode; ctx.userId = userId; 
+        ctx.peerIp = peerIp; ctx.peerPort = peerPort;
 
         UID_INDEX.put(uid, s);
         ROOM_SESS.computeIfAbsent(roomCode, k -> ConcurrentHashMap.newKeySet()).add(s);
 
-        // Trả danh sách peers đang online (trừ mình)
+        // Trả danh sách peers đang online (trừ mình) - bao gồm P2P info
         List<Map<String, Object>> peers = new ArrayList<>();
         for (Session ss : ROOM_SESS.get(roomCode)) {
           if (ss == s) continue;
           ClientCtx c = CLIENTS.get(ss);
-          if (c != null) peers.add(Map.of("uid", c.uid, "name", c.name));
+          if (c != null) peers.add(Map.of(
+            "uid", c.uid, 
+            "name", c.name,
+            "ip", c.peerIp,
+            "port", c.peerPort
+          ));
         }
         send(s, Map.of("t","peers","peers", peers));
 
@@ -140,8 +150,14 @@ public class SignalingEndpoint {
           }
         }
 
-        // Thông báo mọi người có người mới
-        broadcast(roomCode, Map.of("t","peer.joined","uid", uid, "name", name), s);
+        // Thông báo mọi người có người mới (kèm P2P info)
+        broadcast(roomCode, Map.of(
+          "t","peer.joined",
+          "uid", uid, 
+          "name", name,
+          "ip", peerIp,
+          "port", peerPort
+        ), s);
       }
 
       case "leave" -> {

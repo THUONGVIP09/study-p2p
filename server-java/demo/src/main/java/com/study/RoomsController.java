@@ -68,11 +68,8 @@ public class RoomsController {
                 ps.setString(3, req.description());
                 ps.setString(4, visibility);
                 ps.setString(5, req.passcode());
-                if (maxP == null) {
-                    ps.setNull(6, Types.INTEGER);
-                } else {
-                    ps.setInt(6, maxP);
-                }
+                // Set max participants
+                ps.setInt(6, maxP);
                 ps.setLong(7, createdBy);
 
                 ps.executeUpdate();
@@ -193,7 +190,6 @@ public class RoomsController {
                 if (!rs.next()) return bad("Room không tồn tại");
                 String vis = rs.getString("visibility");
                 String storedPass = rs.getString("passcode");
-                long hostId = rs.getLong("created_by");
 
                 vis = normalizeVisibility(vis);
                 switch (vis) {

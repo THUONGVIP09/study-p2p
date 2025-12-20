@@ -1,7 +1,5 @@
 package com.study.dto;
 
-import java.time.LocalDateTime;
-
 public record CallSessionDto(
                 long id,
                 long roomId,
