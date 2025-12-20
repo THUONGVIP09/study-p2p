@@ -78,19 +78,9 @@ class _SignUpInfoScreenState extends State<SignUpInfoScreen> {
                             ],
                           ),
                           const SizedBox(height: 24),
-                          Text(
-                            'MaroMart', // Thay sau thành 'Study P2P'
-                            style: theme.textTheme.headlineSmall?.copyWith(
-                                fontWeight: FontWeight.w800,
-                                color: Colors.white),
-                          ),
+                         
                           const SizedBox(height: 8),
-                          Text(
-                            'MaroMart, the easy way for people to buy, sell, and connect with each other.',
-                            style: theme.textTheme.bodyMedium?.copyWith(
-                                color: Colors.white.withOpacity(0.85),
-                                height: 1.5),
-                          ),
+                         
                           const SizedBox(height: 24),
                           _RoundedField(
                             hint: 'Display Name...',
