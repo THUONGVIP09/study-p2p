@@ -136,16 +136,7 @@ class GetStartedScreen extends StatelessWidget {
 
                     const SizedBox(height: 12),
 
-                    // Mô tả
-                    Text(
-                      'MaroMart, the easy way for people to buy, sell, and connect with each other.',
-                      textAlign: TextAlign.center,
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        fontSize: 14,
-                        color: const Color(0xFF7A7A7A),
-                        height: 1.5,
-                      ),
-                    ),
+                    
 
                     const SizedBox(height: 12),
                     // Ảnh minh hoạ
