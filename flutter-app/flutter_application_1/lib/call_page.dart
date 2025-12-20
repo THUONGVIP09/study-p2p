@@ -11,6 +11,7 @@ import 'models/call_session.dart';
 import 'models/chat_message.dart';
 import 'services/api_service.dart';
 import 'services/p2p_tcp_server.dart';
+import 'services/webrtc_p2p_chat.dart';
 import 'services/local_message_storage.dart';
 
 class P2PCallPage extends StatefulWidget {
@@ -57,11 +58,14 @@ class _P2PCallPageState extends State<P2PCallPage> {
   WebSocketChannel? _ws;
   late final String _myUid;
 
-  // P2P Chat
+  // P2P Chat - TCP cho mobile/desktop
   P2PTcpServer? _p2pServer;
   final Map<String, Map<String, dynamic>> _roomPeers =
       {}; // uid -> {name, ip, port}
   String? _myLocalIp;
+
+  // WebRTC P2P Chat cho web (true P2P)
+  WebRTCP2PChat? _webrtcP2PChat;
 
   bool micMuted = false;
   bool camEnabled = true;
@@ -296,6 +300,9 @@ class _P2PCallPageState extends State<P2PCallPage> {
       synced: false,
     );
 
+    // Track this message to avoid duplicate echo
+    _awaitEchoText = text;
+
     // Send via P2P to all peers in room
     _broadcastToPeersP2P(
         text, widget.currentUserId, widget.displayName ?? 'You', timestamp);
@@ -303,10 +310,7 @@ class _P2PCallPageState extends State<P2PCallPage> {
 
   Future<void> _broadcastToPeersP2P(
       String text, int senderId, String senderName, DateTime timestamp) async {
-    if (_roomPeers.isEmpty) {
-      debugPrint('⚠️ No peers to broadcast to');
-      return;
-    }
+    debugPrint('🔊 P2P Broadcast to ${_roomPeers.length} peers');
 
     final message = {
       'type': 'chat',
@@ -316,9 +320,30 @@ class _P2PCallPageState extends State<P2PCallPage> {
       'timestamp': timestamp.toIso8601String(),
     };
 
-    final peerIps = _roomPeers.values.map((p) => p['ip'] as String).toList();
-    if (_p2pServer != null) {
-      await _p2pServer!.broadcastToPeers(peerIps, message);
+    // Web: WebRTC DataChannel P2P (pure P2P, NO server relay)
+    if (kIsWeb) {
+      if (_webrtcP2PChat != null) {
+        await _webrtcP2PChat!.broadcast(message);
+        debugPrint('✅ P2P sent via WebRTC DataChannel');
+      } else {
+        debugPrint('⚠️ WebRTC P2P Chat not initialized');
+      }
+    }
+    // Mobile/Desktop: TCP socket P2P (pure P2P, NO server relay)
+    else {
+      if (_roomPeers.isEmpty) {
+        debugPrint('⚠️ No peers - message NOT sent (pure P2P mode)');
+        return;
+      }
+
+      final peerIps = _roomPeers.values.map((p) => p['ip'] as String).toList();
+
+      if (_p2pServer != null) {
+        await _p2pServer!.broadcastToPeers(peerIps, message);
+        debugPrint('✅ P2P sent via TCP socket');
+      } else {
+        debugPrint('❌ TCP P2P server not initialized');
+      }
     }
   }
 
@@ -400,6 +425,14 @@ class _P2PCallPageState extends State<P2PCallPage> {
               text != null &&
               timestamp != null) {
             final ts = DateTime.tryParse(timestamp) ?? DateTime.now();
+
+            // Avoid duplicate echo from server when it relays back
+            if (senderId == widget.currentUserId && _awaitEchoText == text) {
+              debugPrint('⏭️ Skipping duplicate echo from TCP');
+              _awaitEchoText = null;
+              return;
+            }
+
             _handleIncomingChat(senderId, senderName, text, ts);
 
             // Lưu vào local storage
@@ -424,17 +457,57 @@ class _P2PCallPageState extends State<P2PCallPage> {
     }
   }
 
+  // Legacy WebRTC offline manager removed in pure P2P mode
+
   Future<void> _initAll() async {
     await _localRenderer.initialize();
 
-    // Init P2P TCP server first
-    await _initP2PServer();
+    // Khởi tạo P2P Chat
+    if (kIsWeb) {
+      _initWebRTCP2PChat();
+    } else {
+      // Init P2P TCP server cho mobile/desktop
+      await _initP2PServer();
+    }
 
     // Luôn bật local trước
     await _startLocalStream();
 
     // Sau đó connect WS
     await _connectWs();
+  }
+
+  /// Initialize WebRTC P2P Chat for web (pure P2P)
+  void _initWebRTCP2PChat() {
+    debugPrint('🌐 Initializing WebRTC P2P Chat for web');
+    _webrtcP2PChat = WebRTCP2PChat(
+      myUid: _myUid,
+      sendSignal: (payload) {
+        // Gửi signaling message qua WebSocket
+        if (_ws != null) {
+          try {
+            _ws!.sink.add(jsonEncode(payload));
+          } catch (e) {
+            debugPrint('⚠️ Failed to send signal: $e');
+          }
+        }
+      },
+      onMessageReceived: (peerId, message) {
+        // Nhận tin nhắn P2P từ peer
+        final senderId = message['senderId'] as int?;
+        final senderName = message['senderName'] as String?;
+        final text = message['text'] as String?;
+        final timestamp = message['timestamp'] as String?;
+
+        if (senderId != null &&
+            senderName != null &&
+            text != null &&
+            timestamp != null) {
+          final ts = DateTime.tryParse(timestamp) ?? DateTime.now();
+          _handleIncomingChat(senderId, senderName, text, ts);
+        }
+      },
+    );
   }
 
   // ================== MEDIA ==================
@@ -886,6 +959,11 @@ class _P2PCallPageState extends State<P2PCallPage> {
         // 🌐 Backend gửi danh sách peers đang có trong room (bao gồm P2P info)
         final peersList = (m['peers'] as List<dynamic>? ?? []);
         debugPrint('📋 Received peers: ${peersList.length}');
+        debugPrint('📋 Full peers response: ${jsonEncode(m)}');
+
+        if (peersList.isEmpty) {
+          debugPrint('⚠️ NO PEERS RECEIVED - You are alone in room');
+        }
 
         for (final p in peersList) {
           final peerData = p as Map<String, dynamic>;
@@ -893,6 +971,9 @@ class _P2PCallPageState extends State<P2PCallPage> {
           final name = peerData['name'] as String? ?? uid;
           final ip = peerData['ip'] as String?;
           final port = peerData['port'] as String?;
+
+          debugPrint(
+              '🔍 Processing peer: uid=$uid, name=$name, ip=$ip, port=$port');
 
           // Skip nếu đây là chính mình (duplicate connection)
           if (uid == _myUid ||
@@ -914,6 +995,20 @@ class _P2PCallPageState extends State<P2PCallPage> {
             });
             debugPrint(
                 '👤 Peer added to P2P list: $name ($uid) at $ip:${port ?? "9999"}');
+
+            // Web: offline legacy WebRTC removed in pure P2P mode
+          } else {
+            debugPrint('⚠️ Peer $uid has no IP info');
+          }
+
+          // Initialize WebRTC P2P Chat connection on web
+          if (kIsWeb && _webrtcP2PChat != null) {
+            try {
+              await _webrtcP2PChat!.initPeerConnection(uid);
+              debugPrint('✅ WebRTC P2P Chat peer init for $uid');
+            } catch (e) {
+              debugPrint('❌ Failed to init WebRTC P2P for $uid: $e');
+            }
           }
 
           await _addPeer(uid, name);
@@ -921,6 +1016,7 @@ class _P2PCallPageState extends State<P2PCallPage> {
           // Mình vào sau → mình gọi offer cho từng peer có sẵn
           await _createOfferForPeer(uid);
         }
+        debugPrint('✅ Total P2P peers in _roomPeers: ${_roomPeers.length}');
         break;
 
       case 'peer.joined':
@@ -946,12 +1042,14 @@ class _P2PCallPageState extends State<P2PCallPage> {
           });
           debugPrint(
               '👤 New peer for P2P: $name ($uid) at $ip:${port ?? "9999"}');
+
+          // Web: offline legacy WebRTC removed in pure P2P mode
         }
 
         debugPrint('🚪 Peer joined: $uid ($name)');
         await _addPeer(uid, name);
 
-        // Người mới join sẽ tự gửi offer, mình chỉ cần chờ
+        // Người mới join sẽ tự gửi offer cho mình; mình không chủ động tạo offer để tránh glare
         break;
 
       case 'offer':
@@ -964,6 +1062,47 @@ class _P2PCallPageState extends State<P2PCallPage> {
 
       case 'ice':
         await _handleIce(m);
+        break;
+
+      // WebRTC P2P Chat signaling handlers
+      case 'webrtc.offer':
+        if (kIsWeb && _webrtcP2PChat != null) {
+          final peerId = m['fromUid'] as String?;
+          final sdp = m['sdp'] as String?;
+          if (peerId != null && sdp != null) {
+            debugPrint('📥 Received WebRTC offer from $peerId');
+            await _webrtcP2PChat!.handleOffer(peerId, sdp);
+          }
+        }
+        break;
+
+      case 'webrtc.answer':
+        if (kIsWeb && _webrtcP2PChat != null) {
+          final peerId = m['fromUid'] as String?;
+          final sdp = m['sdp'] as String?;
+          if (peerId != null && sdp != null) {
+            debugPrint('📥 Received WebRTC answer from $peerId');
+            await _webrtcP2PChat!.handleAnswer(peerId, sdp);
+          }
+        }
+        break;
+
+      case 'webrtc.ice':
+        if (kIsWeb && _webrtcP2PChat != null) {
+          final peerId = m['fromUid'] as String?;
+          final candidate = m['candidate'] as String?;
+          final sdpMid = m['sdpMid'] as String?;
+          final sdpMLineIndex = m['sdpMLineIndex'] as int?;
+          if (peerId != null && candidate != null) {
+            debugPrint('📥 Received ICE candidate from $peerId');
+            await _webrtcP2PChat!.handleIceCandidate(
+              peerId,
+              candidate,
+              sdpMid ?? '',
+              sdpMLineIndex ?? 0,
+            );
+          }
+        }
         break;
 
       case 'peer.left':
@@ -990,10 +1129,11 @@ class _P2PCallPageState extends State<P2PCallPage> {
         break;
 
       case 'chat':
-        final senderId = m['fromUserId'] as int?;
-        final senderName = m['fromName'] as String?;
+        // Handle both old format (fromUserId, fromName, ts) and new format (senderId, senderName, timestamp)
+        final senderId = (m['fromUserId'] ?? m['senderId']) as int?;
+        final senderName = (m['fromName'] ?? m['senderName']) as String?;
         final text = m['text'] as String?;
-        final tsStr = m['ts'] as String?;
+        final tsStr = (m['ts'] ?? m['timestamp']) as String?;
         final mid = m['messageId'] as int?;
         if (senderId != null &&
             senderName != null &&

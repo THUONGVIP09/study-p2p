@@ -39,24 +39,6 @@ public class OnlineListEndpoint {
         System.err.println("❌ WebSocket error: " + error.getMessage());
     }
 
-    /**
-     * Broadcast online peers list to all subscribed clients
-     * Called by ChatPeerController when register/heartbeat/logout
-     */
-    public static void broadcastList() {
-        try {
-            String json = buildOnlineListJson();
-            for (Session session : sessions) {
-                if (session.isOpen()) {
-                    session.getBasicRemote().sendText(json);
-                }
-            }
-            System.out.println("📡 Broadcast online list to " + sessions.size() + " clients");
-        } catch (IOException e) {
-            System.err.println("Error broadcasting list: " + e.getMessage());
-        }
-    }
-
     private static String buildOnlineListJson() {
         try {
             // Get all online peers from registry
@@ -81,6 +63,24 @@ public class OnlineListEndpoint {
         } catch (Exception e) {
             System.err.println("Error building JSON: " + e.getMessage());
             return "{\"type\":\"ONLINE_LIST\",\"peers\":[]}";
+        }
+    }
+
+    /**
+     * Broadcast online peers list to all subscribed clients
+     * Called by ChatPeerController when register/heartbeat/logout
+     */
+    public static void broadcastList() {
+        try {
+            String json = buildOnlineListJson();
+            for (Session session : sessions) {
+                if (session.isOpen()) {
+                    session.getBasicRemote().sendText(json);
+                }
+            }
+            System.out.println("📡 Broadcast online list to " + sessions.size() + " clients");
+        } catch (IOException e) {
+            System.err.println("Error broadcasting list: " + e.getMessage());
         }
     }
 }

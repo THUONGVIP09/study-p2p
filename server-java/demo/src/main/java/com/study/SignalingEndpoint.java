@@ -36,6 +36,10 @@ public class SignalingEndpoint {
 
   /* ---------- Helpers ---------- */
 
+  private void debugPrint(String msg) {
+    System.out.println("[SignalingEndpoint] " + msg);
+  }
+
   private void send(Session s, Object obj) {
     if (s == null || !s.isOpen()) return;
     try { s.getBasicRemote().sendText(GSON.toJson(obj)); } catch (IOException ignored) {}
@@ -269,47 +273,75 @@ public class SignalingEndpoint {
       }
 
       case "chat" -> {
-        ClientCtx ctx = CLIENTS.get(s);
-        if (ctx != null && ctx.room != null) {
-          Integer fromUserId = m.has("fromUserId") ? m.get("fromUserId").getAsInt() : null;
-          String fromName = m.has("fromName") ? m.get("fromName").getAsString() : ctx.name;
-          String text = m.has("text") ? m.get("text").getAsString() : "";
-          // Thời điểm server
-          Instant now = Instant.now();
-          String ts = now.toString();
+        // P2P mode: server KHÔNG relay chat
+        // Chat đi trực tiếp peer-to-peer qua WebRTC DataChannel (web) hoặc TCP (mobile)
+        debugPrint("⏭️ Skipping chat relay (pure P2P mode)");
+      }
 
-          Long roomId = parseRoomId(ctx.room);
-          Long convId = (roomId != null) ? getConversationId(roomId) : null;
-          Long senderId = (fromUserId != null) ? fromUserId.longValue() : ctx.userId;
+      case "chat.broadcast" -> {
+        // P2P mode: server KHÔNG broadcast
+        debugPrint("⏭️ Skipping chat broadcast (pure P2P mode)");
+      }
 
-          Long messageId = null;
-          if (convId != null && senderId != null && text != null && !text.isBlank()) {
-            try (Connection cn = Db.get();
-                 PreparedStatement st = cn.prepareStatement(
-                   "INSERT INTO messages(conversation_id, sender_id, msg_type, content, metadata, created_at) VALUES(?,?,?,?,?,NOW())",
-                   Statement.RETURN_GENERATED_KEYS)) {
-              st.setLong(1, convId);
-              st.setLong(2, senderId);
-              st.setString(3, "TEXT");
-              st.setString(4, text);
-              st.setNull(5, Types.VARCHAR); // metadata NULL
-              st.executeUpdate();
-              try (ResultSet rs = st.getGeneratedKeys()) {
-                if (rs.next()) messageId = rs.getLong(1);
-              }
-            } catch (SQLException e) {
-              e.printStackTrace();
-            }
+      case "webrtc.offer" -> {
+        // WebRTC P2P signaling: forward offer to specific peer
+        String targetUid = m.has("targetUid") ? m.get("targetUid").getAsString() : null;
+        String sdp = m.has("sdp") ? m.get("sdp").getAsString() : null;
+        
+        if (targetUid != null && sdp != null) {
+          ClientCtx ctx = CLIENTS.get(s);
+          Session targetSess = UID_INDEX.get(targetUid);
+          
+          if (targetSess != null && ctx != null) {
+            Map<String, Object> payload = new LinkedHashMap<>();
+            payload.put("t", "webrtc.offer");
+            payload.put("fromUid", ctx.uid);
+            payload.put("fromName", ctx.name);
+            payload.put("sdp", sdp);
+            send(targetSess, payload);
           }
+        }
+      }
 
-          Map<String, Object> payload = new LinkedHashMap<>();
-          payload.put("t", "chat");
-          payload.put("fromUserId", senderId != null ? senderId.intValue() : 0);
-          payload.put("fromName", fromName);
-          payload.put("text", text);
-          payload.put("ts", ts);
-          if (messageId != null) payload.put("messageId", messageId);
-          broadcast(ctx.room, payload, null);
+      case "webrtc.answer" -> {
+        // WebRTC P2P signaling: forward answer to specific peer
+        String targetUid = m.has("targetUid") ? m.get("targetUid").getAsString() : null;
+        String sdp = m.has("sdp") ? m.get("sdp").getAsString() : null;
+        
+        if (targetUid != null && sdp != null) {
+          ClientCtx ctx = CLIENTS.get(s);
+          Session targetSess = UID_INDEX.get(targetUid);
+          
+          if (targetSess != null && ctx != null) {
+            Map<String, Object> payload = new LinkedHashMap<>();
+            payload.put("t", "webrtc.answer");
+            payload.put("fromUid", ctx.uid);
+            payload.put("sdp", sdp);
+            send(targetSess, payload);
+          }
+        }
+      }
+
+      case "webrtc.ice" -> {
+        // WebRTC P2P signaling: forward ICE candidate to specific peer
+        String targetUid = m.has("targetUid") ? m.get("targetUid").getAsString() : null;
+        String candidate = m.has("candidate") ? m.get("candidate").getAsString() : null;
+        String sdpMid = m.has("sdpMid") ? m.get("sdpMid").getAsString() : null;
+        int sdpMLineIndex = m.has("sdpMLineIndex") ? m.get("sdpMLineIndex").getAsInt() : 0;
+        
+        if (targetUid != null && candidate != null) {
+          ClientCtx ctx = CLIENTS.get(s);
+          Session targetSess = UID_INDEX.get(targetUid);
+          
+          if (targetSess != null && ctx != null) {
+            Map<String, Object> payload = new LinkedHashMap<>();
+            payload.put("t", "webrtc.ice");
+            payload.put("fromUid", ctx.uid);
+            payload.put("candidate", candidate);
+            payload.put("sdpMid", sdpMid);
+            payload.put("sdpMLineIndex", sdpMLineIndex);
+            send(targetSess, payload);
+          }
         }
       }
 
