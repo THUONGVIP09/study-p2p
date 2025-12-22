@@ -80,6 +80,7 @@ class _P2PCallPageState extends State<P2PCallPage> {
   // View state
   String _viewMode = 'grid'; // grid | list (placeholder)
   bool _isFullscreen = false; // placeholder
+  String? _currentScreenSharerUid; // uid của người đang chia sẻ màn hình
 
   @override
   void initState() {
@@ -98,7 +99,7 @@ class _P2PCallPageState extends State<P2PCallPage> {
   Widget _buildChatPanel() {
     return Column(
       children: [
-        // Chat Summary Button
+        // Chat Summary Button with Back Button
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           decoration: BoxDecoration(
@@ -107,6 +108,16 @@ class _P2PCallPageState extends State<P2PCallPage> {
           ),
           child: Row(
             children: [
+              IconButton(
+                icon: const Icon(Icons.arrow_back),
+                color: Colors.purple,
+                tooltip: 'Quay lại',
+                onPressed: () {
+                  setState(() {
+                    _activePanel = 'none';
+                  });
+                },
+              ),
               Expanded(
                 child: Text(
                   'Chat trong cuộc gọi',
@@ -493,7 +504,24 @@ class _P2PCallPageState extends State<P2PCallPage> {
         }
       },
       onMessageReceived: (peerId, message) {
-        // Nhận tin nhắn P2P từ peer
+        // Nếu là message chia sẻ màn hình thì cập nhật UI, không ảnh hưởng chat
+        if (message['type'] == 'screen_share') {
+          final sharerUid = message['uid'] as String?;
+          final active = message['active'] as bool?;
+          if (active == true && sharerUid != null) {
+            setState(() {
+              _currentScreenSharerUid = sharerUid;
+            });
+          } else if (active == false && sharerUid != null) {
+            if (_currentScreenSharerUid == sharerUid) {
+              setState(() {
+                _currentScreenSharerUid = null;
+              });
+            }
+          }
+          return;
+        }
+        // ...existing code chat...
         final senderId = message['senderId'] as int?;
         final senderName = message['senderName'] as String?;
         final text = message['text'] as String?;
@@ -748,6 +776,15 @@ class _P2PCallPageState extends State<P2PCallPage> {
       _screenStream = screenStream;
       _isScreenSharing = true;
 
+      // Gửi message screen_share qua DataChannel cho các peer
+      if (_webrtcP2PChat != null) {
+        _webrtcP2PChat!.broadcast({
+          'type': 'screen_share',
+          'uid': _myUid,
+          'active': true,
+        });
+      }
+
       // Lắng nghe sự kiện user stop share từ browser UI
       final videoTrack = screenStream.getVideoTracks().firstOrNull;
       if (videoTrack != null) {
@@ -862,6 +899,15 @@ class _P2PCallPageState extends State<P2PCallPage> {
     await _screenStream!.dispose();
     _screenStream = null;
     _isScreenSharing = false;
+
+    // Gửi message screen_share qua DataChannel cho các peer
+    if (_webrtcP2PChat != null) {
+      _webrtcP2PChat!.broadcast({
+        'type': 'screen_share',
+        'uid': _myUid,
+        'active': false,
+      });
+    }
 
     // Quay về camera stream
     if (_localStream != null) {
@@ -1509,6 +1555,112 @@ class _P2PCallPageState extends State<P2PCallPage> {
   Widget _buildVideoGrid() {
     final totalParticipants = 1 + _peers.length;
 
+    // Sử dụng _currentScreenSharerUid cho UI
+    if (_isScreenSharing) {
+      final peersList = _peers.values.toList();
+      return Stack(
+        children: [
+          Positioned.fill(
+            child: Container(
+              margin: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                border: Border.all(color: Colors.green, width: 3),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: _buildLocalVideoTile(),
+            ),
+          ),
+          Positioned(
+            bottom: 16,
+            right: 16,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                for (final peer in peersList)
+                  Container(
+                    width: 120,
+                    height: 68,
+                    margin: const EdgeInsets.only(left: 8),
+                    decoration: BoxDecoration(
+                      border:
+                          Border.all(color: Colors.blueGrey.shade700, width: 2),
+                      borderRadius: BorderRadius.circular(8),
+                      color: Colors.black,
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(6),
+                      child: _buildRemoteVideoTile(peer),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ],
+      );
+    }
+
+    if (_currentScreenSharerUid != null && _currentScreenSharerUid != _myUid) {
+      final screenSharer = _peers[_currentScreenSharerUid!];
+      if (screenSharer != null) {
+        final peersList =
+            _peers.values.where((p) => p.uid != screenSharer.uid).toList();
+        return Stack(
+          children: [
+            Positioned.fill(
+              child: Container(
+                margin: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.green, width: 3),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: _buildRemoteVideoTile(screenSharer),
+              ),
+            ),
+            Positioned(
+              bottom: 16,
+              right: 16,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 120,
+                    height: 68,
+                    margin: const EdgeInsets.only(left: 8),
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Colors.purple, width: 2),
+                      borderRadius: BorderRadius.circular(8),
+                      color: Colors.black,
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(6),
+                      child: _buildLocalVideoTile(),
+                    ),
+                  ),
+                  for (final peer in peersList)
+                    Container(
+                      width: 120,
+                      height: 68,
+                      margin: const EdgeInsets.only(left: 8),
+                      decoration: BoxDecoration(
+                        border: Border.all(
+                            color: Colors.blueGrey.shade700, width: 2),
+                        borderRadius: BorderRadius.circular(8),
+                        color: Colors.black,
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(6),
+                        child: _buildRemoteVideoTile(peer),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ],
+        );
+      }
+    }
+
+    // Default: grid layout
     return LayoutBuilder(
       builder: (context, constraints) {
         final w = constraints.maxWidth;
