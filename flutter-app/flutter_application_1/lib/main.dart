@@ -6,6 +6,7 @@ import 'package:flutter_application_1/screens/authencation/Sign_up/signup_info_s
 import 'package:flutter_application_1/screens/authencation/Sign_up/signup_password_screen.dart';
 import 'home_shell.dart';
 
+
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
   runApp(const MyApp());

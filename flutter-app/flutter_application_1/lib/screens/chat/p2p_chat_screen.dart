@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../services/p2p_chat_service.dart';
 import '../../services/chat_storage_service.dart';
 
@@ -89,8 +90,12 @@ class _P2PChatScreenState extends State<P2PChatScreen> {
 
     setState(() => _isSending = true);
 
-    final success =
-        await widget.chatService.sendMessage(widget.peerId, content);
+    // Try to include current userId as 'from' so receiver can map to friendId
+    final prefs = await SharedPreferences.getInstance();
+    final currentUserId = prefs.getInt('userId');
+
+    final success = await widget.chatService.sendMessage(widget.peerId, content,
+      from: currentUserId);
 
     if (success) {
       setState(() {

@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:web_socket_channel/io.dart';
 import 'dart:convert';
 import '../../services/friends_service.dart';
+import '../../config/app_config.dart';
 import '../chat/hybrid_chat_screen.dart';
 
 class FriendsTab extends StatefulWidget {
@@ -31,8 +32,9 @@ class _FriendsTabState extends State<FriendsTab> {
   void _subscribeToOnlineList() {
     try {
       // Connect to online list broadcast WebSocket
+      // Use AppConfig so the URL follows runtime server IP settings
       _onlineListChannel = IOWebSocketChannel.connect(
-        Uri.parse('ws://127.0.0.1:8082/chat-online-list'),
+        Uri.parse(AppConfig.onlineListUrl),
       );
 
       // Listen for online peer updates

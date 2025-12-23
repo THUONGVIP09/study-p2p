@@ -56,16 +56,22 @@ class HybridChatService {
 
     // pipe P2P messages to hybrid stream with friendId conversion
     p2p.messageStream.listen((msg) {
-      // msg có 'from' là userId của người gửi (friendId)
-      final friendId = msg['from'] as int?; // ✅ Lấy trực tiếp từ tin nhắn!
+      // msg có thể chứa 'from' (userId của người gửi) hoặc chỉ có 'peerId'
+      var friendId = msg['from'] as int?; // ưu tiên lấy từ payload nếu có
       final peerId = msg['peerId'] as String?;
       final content = msg['content'] as String?;
       final timestamp = msg['timestamp'] as String?;
 
+      // Nếu payload không chứa friendId, thử dùng mapping peerId -> friendId
+      if (friendId == null && peerId != null && _peerIdToFriend.containsKey(peerId)) {
+        friendId = _peerIdToFriend[peerId];
+        print('ℹ️ Resolved friendId from peerId mapping: $peerId -> $friendId');
+      }
+
       if (content == null || friendId == null) {
         print(
-            '⚠️ P2P message thiếu thông tin: friendId=$friendId, content=$content');
-        return; // Skip if missing critical data
+            '⚠️ P2P message thiếu thông tin: friendId=$friendId, peerId=$peerId, content=$content');
+        return; // Skip if still missing critical data
       }
 
       print('');

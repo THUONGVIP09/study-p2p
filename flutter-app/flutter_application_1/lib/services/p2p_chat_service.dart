@@ -119,7 +119,7 @@ class P2PChatService {
   }
 
   /// Gửi message đến 1 peer
-  Future<bool> sendMessage(String peerId, String content) async {
+  Future<bool> sendMessage(String peerId, String content, {int? from}) async {
     final socket = _activeSockets[peerId];
 
     if (socket == null) {
@@ -128,10 +128,12 @@ class P2PChatService {
     }
 
     try {
-      final message = jsonEncode({
+      final Map<String, dynamic> payload = {
         'content': content,
         'timestamp': DateTime.now().toIso8601String(),
-      });
+      };
+      if (from != null) payload['from'] = from;
+      final message = jsonEncode(payload);
 
       socket.write(message);
       await socket.flush();
