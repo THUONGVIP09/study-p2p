@@ -4,15 +4,12 @@ import 'package:flutter/foundation.dart'; // for kIsWeb
 import 'package:flutter/material.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
-import 'package:network_info_plus/network_info_plus.dart';
 
 import 'models/room.dart';
 import 'models/call_session.dart';
-import 'models/chat_message.dart';
 import 'services/api_service.dart';
-import 'services/p2p_tcp_server.dart';
 import 'services/webrtc_p2p_chat.dart';
-import 'services/local_message_storage.dart';
+// chat/messages removed: keep call/room and screen-share only
 
 class P2PCallPage extends StatefulWidget {
   final Room room;
@@ -58,13 +55,7 @@ class _P2PCallPageState extends State<P2PCallPage> {
   WebSocketChannel? _ws;
   late final String _myUid;
 
-  // P2P Chat - TCP cho mobile/desktop
-  P2PTcpServer? _p2pServer;
-  final Map<String, Map<String, dynamic>> _roomPeers =
-      {}; // uid -> {name, ip, port}
-  String? _myLocalIp;
-
-  // WebRTC P2P Chat cho web (true P2P)
+  // WebRTC P2P Chat cho web (used for screen-share signaling)
   WebRTCP2PChat? _webrtcP2PChat;
 
   bool micMuted = false;
@@ -73,10 +64,11 @@ class _P2PCallPageState extends State<P2PCallPage> {
   bool _isScreenSharing = false; // 🖥️ Flag cho screen sharing
   // UI panels
   String _activePanel = 'none'; // none | participants | chat | settings
-  final List<ChatMessage> _messages = []; // room chat messages
-  final TextEditingController _chatController = TextEditingController();
-  final ScrollController _chatScrollController = ScrollController();
-  String? _awaitEchoText; // suppress duplicate echo of our sent message
+  // Room public chat messages
+  final List<Map<String, dynamic>> _roomMessages = [];
+  final TextEditingController _chatInputController = TextEditingController();
+  String? _selectedIcon;
+  // chat removed: no local chat storage or controllers
   // View state
   String _viewMode = 'grid'; // grid | list (placeholder)
   bool _isFullscreen = false; // placeholder
@@ -95,302 +87,7 @@ class _P2PCallPageState extends State<P2PCallPage> {
     _initAll();
   }
 
-  // ===== Chat panel =====
-  Widget _buildChatPanel() {
-    return Column(
-      children: [
-        // Chat Summary Button with Back Button
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          decoration: BoxDecoration(
-            color: Colors.purple.shade50,
-            border: Border(bottom: BorderSide(color: Colors.purple.shade100)),
-          ),
-          child: Row(
-            children: [
-              IconButton(
-                icon: const Icon(Icons.arrow_back),
-                color: Colors.purple,
-                tooltip: 'Quay lại',
-                onPressed: () {
-                  setState(() {
-                    _activePanel = 'none';
-                  });
-                },
-              ),
-              Expanded(
-                child: Text(
-                  'Chat trong cuộc gọi',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w600,
-                    color: Colors.purple.shade700,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-        Expanded(
-          child: ListView.builder(
-            padding: const EdgeInsets.all(12),
-            controller: _chatScrollController,
-            itemCount: _messages.length,
-            itemBuilder: (context, index) {
-              final m = _messages[index];
-              final align =
-                  m.isSelf ? CrossAxisAlignment.end : CrossAxisAlignment.start;
-              final bubbleColor =
-                  m.isSelf ? Colors.purple.shade700 : Colors.blueGrey.shade700;
-              return Container(
-                alignment:
-                    m.isSelf ? Alignment.centerRight : Alignment.centerLeft,
-                padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: bubbleColor,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        m.text,
-                        style:
-                            const TextStyle(color: Colors.white, fontSize: 14),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        _formatTime(m.timestamp),
-                        style: const TextStyle(
-                            color: Colors.white38, fontSize: 10),
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            },
-          ),
-        ),
-        Container(
-          padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            border: Border(top: BorderSide(color: Colors.black12)),
-          ),
-          child: Row(
-            children: [
-              IconButton(
-                tooltip: 'Emoji',
-                icon: const Icon(Icons.emoji_emotions_outlined,
-                    color: Colors.orangeAccent),
-                onPressed: _openEmojiPicker,
-              ),
-              Expanded(
-                child: TextField(
-                  controller: _chatController,
-                  style: const TextStyle(color: Colors.black),
-                  decoration: const InputDecoration(
-                    hintText: 'Gửi tin nhắn...',
-                    hintStyle: TextStyle(color: Colors.black54),
-                    filled: true,
-                    fillColor: Colors.white,
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              IconButton(
-                icon: const Icon(Icons.send),
-                color: Colors.black87,
-                onPressed: _onSendChat,
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  void _openEmojiPicker() async {
-    final emojis = [
-      '😀',
-      '😁',
-      '😂',
-      '🤣',
-      '😊',
-      '😍',
-      '😘',
-      '😎',
-      '🤔',
-      '😢',
-      '😭',
-      '😡',
-      '👍',
-      '👎',
-      '🙏',
-      '🔥',
-      '🎉',
-      '❤️',
-      '💔',
-      '⚡',
-      '🎶',
-      '📌',
-      '✅',
-      '❌'
-    ];
-    final res = await showModalBottomSheet<String>(
-      context: context,
-      backgroundColor: Colors.black87,
-      builder: (ctx) {
-        return GridView.builder(
-          padding: const EdgeInsets.all(16),
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 6,
-            mainAxisSpacing: 12,
-            crossAxisSpacing: 12,
-          ),
-          itemCount: emojis.length,
-          itemBuilder: (context, i) {
-            final e = emojis[i];
-            return InkWell(
-              onTap: () => Navigator.pop(context, e),
-              child: Container(
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: Colors.white10,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.white24),
-                ),
-                child: Text(
-                  e,
-                  style: const TextStyle(fontSize: 24),
-                ),
-              ),
-            );
-          },
-        );
-      },
-    );
-    if (res != null && res.isNotEmpty) {
-      _chatController.text += res;
-      _chatController.selection = TextSelection.fromPosition(
-        TextPosition(offset: _chatController.text.length),
-      );
-    }
-  }
-
-  void _onSendChat() {
-    final text = _chatController.text.trim();
-    if (text.isEmpty) return;
-    _chatController.clear();
-
-    final timestamp = DateTime.now();
-    final msg = ChatMessage(
-      id: '${timestamp.microsecondsSinceEpoch}',
-      senderId: widget.currentUserId,
-      senderName: widget.displayName ?? 'You',
-      text: text,
-      timestamp: timestamp,
-      isSelf: true,
-    );
-
-    setState(() {
-      _messages.add(msg);
-    });
-    _scrollChatToBottom();
-
-    // Save locally
-    LocalMessageStorage.saveMessage(
-      roomCode: widget.room.roomCode,
-      senderId: widget.currentUserId,
-      senderName: widget.displayName ?? 'You',
-      text: text,
-      timestamp: timestamp,
-      synced: false,
-    );
-
-    // Track this message to avoid duplicate echo
-    _awaitEchoText = text;
-
-    // Send via P2P to all peers in room
-    _broadcastToPeersP2P(
-        text, widget.currentUserId, widget.displayName ?? 'You', timestamp);
-  }
-
-  Future<void> _broadcastToPeersP2P(
-      String text, int senderId, String senderName, DateTime timestamp) async {
-    debugPrint('🔊 P2P Broadcast to ${_roomPeers.length} peers');
-
-    final message = {
-      'type': 'chat',
-      'senderId': senderId,
-      'senderName': senderName,
-      'text': text,
-      'timestamp': timestamp.toIso8601String(),
-    };
-
-    // Web: WebRTC DataChannel P2P (pure P2P, NO server relay)
-    if (kIsWeb) {
-      if (_webrtcP2PChat != null) {
-        await _webrtcP2PChat!.broadcast(message);
-        debugPrint('✅ P2P sent via WebRTC DataChannel');
-      } else {
-        debugPrint('⚠️ WebRTC P2P Chat not initialized');
-      }
-    }
-    // Mobile/Desktop: TCP socket P2P (pure P2P, NO server relay)
-    else {
-      if (_roomPeers.isEmpty) {
-        debugPrint('⚠️ No peers - message NOT sent (pure P2P mode)');
-        return;
-      }
-
-      final peerIps = _roomPeers.values.map((p) => p['ip'] as String).toList();
-
-      if (_p2pServer != null) {
-        await _p2pServer!.broadcastToPeers(peerIps, message);
-        debugPrint('✅ P2P sent via TCP socket');
-      } else {
-        debugPrint('❌ TCP P2P server not initialized');
-      }
-    }
-  }
-
-  void _handleIncomingChat(
-      int senderId, String senderName, String text, DateTime ts,
-      {int? messageId}) {
-    final msg = ChatMessage(
-      id: '${ts.microsecondsSinceEpoch}',
-      senderId: senderId,
-      senderName: senderName,
-      text: text,
-      timestamp: ts,
-      isSelf: senderId == widget.currentUserId,
-      messageId: messageId,
-    );
-    setState(() {
-      _messages.add(msg);
-    });
-    _scrollChatToBottom();
-  }
-
-  void _sendChatSignal(String text) {
-    try {
-      final payload = {
-        't': 'chat',
-        'roomCode': widget.room.roomCode,
-        'fromUserId': widget.currentUserId,
-        'fromName': widget.displayName ?? 'You',
-        'text': text,
-        'ts': DateTime.now().toIso8601String(),
-      };
-      _send(payload);
-    } catch (e) {
-      debugPrint('chat send error: $e');
-    }
-  }
+  // Chat UI removed — feature deprecated in this build
 
   String _formatTime(DateTime dt) {
     final h = dt.hour.toString().padLeft(2, '0');
@@ -398,87 +95,18 @@ class _P2PCallPageState extends State<P2PCallPage> {
     return '$h:$m';
   }
 
-  void _scrollChatToBottom() {
-    if (!_chatScrollController.hasClients) return;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!_chatScrollController.hasClients) return;
-      _chatScrollController.animateTo(
-        _chatScrollController.position.maxScrollExtent,
-        duration: const Duration(milliseconds: 250),
-        curve: Curves.easeOut,
-      );
-    });
-  }
-
   // ================== P2P TCP SERVER ==================
 
-  Future<void> _initP2PServer() async {
-    try {
-      final info = NetworkInfo();
-      _myLocalIp = await info.getWifiIP();
-
-      if (_myLocalIp == null) {
-        debugPrint('⚠️ Cannot get local IP');
-        return;
-      }
-
-      _p2pServer = P2PTcpServer();
-      _p2pServer!.onMessageReceived = (msg) {
-        // Nhận tin nhắn từ peer khác
-        if (msg['type'] == 'chat') {
-          final senderId = msg['senderId'] as int?;
-          final senderName = msg['senderName'] as String?;
-          final text = msg['text'] as String?;
-          final timestamp = msg['timestamp'] as String?;
-
-          if (senderId != null &&
-              senderName != null &&
-              text != null &&
-              timestamp != null) {
-            final ts = DateTime.tryParse(timestamp) ?? DateTime.now();
-
-            // Avoid duplicate echo from server when it relays back
-            if (senderId == widget.currentUserId && _awaitEchoText == text) {
-              debugPrint('⏭️ Skipping duplicate echo from TCP');
-              _awaitEchoText = null;
-              return;
-            }
-
-            _handleIncomingChat(senderId, senderName, text, ts);
-
-            // Lưu vào local storage
-            LocalMessageStorage.saveMessage(
-              roomCode: widget.room.roomCode,
-              senderId: senderId,
-              senderName: senderName,
-              text: text,
-              timestamp: ts,
-              synced: false, // Chưa sync lên server
-            );
-          }
-        }
-      };
-
-      final started = await _p2pServer!.start();
-      if (started) {
-        debugPrint('✅ P2P server started on $_myLocalIp:9999');
-      }
-    } catch (e) {
-      debugPrint('❌ Failed to init P2P server: $e');
-    }
-  }
+  // P2P TCP server removed with chat feature
 
   // Legacy WebRTC offline manager removed in pure P2P mode
 
   Future<void> _initAll() async {
     await _localRenderer.initialize();
 
-    // Khởi tạo P2P Chat
+    // Khởi tạo WebRTC P2P handler (dùng cho signaling like screen-share)
     if (kIsWeb) {
       _initWebRTCP2PChat();
-    } else {
-      // Init P2P TCP server cho mobile/desktop
-      await _initP2PServer();
     }
 
     // Luôn bật local trước
@@ -521,19 +149,7 @@ class _P2PCallPageState extends State<P2PCallPage> {
           }
           return;
         }
-        // ...existing code chat...
-        final senderId = message['senderId'] as int?;
-        final senderName = message['senderName'] as String?;
-        final text = message['text'] as String?;
-        final timestamp = message['timestamp'] as String?;
-
-        if (senderId != null &&
-            senderName != null &&
-            text != null &&
-            timestamp != null) {
-          final ts = DateTime.tryParse(timestamp) ?? DateTime.now();
-          _handleIncomingChat(senderId, senderName, text, ts);
-        }
+        // Non-screen messages ignored (chat removed)
       },
     );
   }
@@ -631,6 +247,128 @@ class _P2PCallPageState extends State<P2PCallPage> {
 
         rethrow; // Thất bại hoàn toàn
       }
+    }
+  }
+
+  Widget _buildChatPanel() {
+    return Container(
+      width: 320,
+      color: Colors.grey[100],
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: Text('Room chat', style: TextStyle(fontWeight: FontWeight.bold)),
+          ),
+          Expanded(
+            child: ListView.builder(
+              reverse: false,
+              itemCount: _roomMessages.length,
+              itemBuilder: (context, idx) {
+                final m = _roomMessages[idx];
+                final from = m['fromName'] ?? m['fromUserId']?.toString() ?? 'User';
+                final text = m['text'] ?? '';
+                final icon = m['icon'] as String?;
+                return ListTile(
+                  leading: icon != null ? Text(icon, style: TextStyle(fontSize: 20)) : null,
+                  title: Text(from),
+                  subtitle: Text(text),
+                );
+              },
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _chatInputController,
+                    decoration: InputDecoration(hintText: 'Type a message'),
+                    onSubmitted: (_) => _sendRoomChat(),
+                  ),
+                ),
+                IconButton(
+                  tooltip: 'Pick icon',
+                  icon: Icon(Icons.emoji_emotions_outlined),
+                  onPressed: _showIconPickerDialog,
+                ),
+                IconButton(
+                  icon: Icon(Icons.send),
+                  onPressed: _sendRoomChat,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _sendRoomChat() {
+    final txt = _chatInputController.text.trim();
+    if (txt.isEmpty || _ws == null) return;
+    final payload = {
+      't': 'chat',
+      'room': widget.room.roomCode,
+      'text': txt,
+    };
+    if (_selectedIcon != null) payload['icon'] = _selectedIcon!;
+    _send(payload);
+    _chatInputController.clear();
+    setState(() => _selectedIcon = null);
+  }
+
+  void _showIconPickerDialog() async {
+    final icons = ['😀', '👍', '❤️', '🔥', '🎉', '😂', '😮', '👏', '🤝', '✨'];
+    final picked = await showDialog<String?>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Chọn icon'),
+        insetPadding: EdgeInsets.symmetric(horizontal: 24.0, vertical: 24.0),
+        content: SizedBox(
+          width: 280,
+          height: 140,
+          child: GridView.count(
+            crossAxisCount: 5,
+            crossAxisSpacing: 8,
+            mainAxisSpacing: 8,
+            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+            children: icons.map((ic) {
+              return ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.white,
+                  elevation: 0,
+                  padding: const EdgeInsets.all(6),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                ),
+                onPressed: () => Navigator.of(context).pop(ic),
+                child: Text(ic, style: TextStyle(fontSize: 20)),
+              );
+            }).toList(),
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(context).pop(null), child: Text('Hủy')),
+        ],
+      ),
+    );
+
+    if (picked != null) {
+      // Insert picked icon into text at caret position and mark selected
+      final cur = _chatInputController;
+      final text = cur.text;
+      final sel = cur.selection;
+      final int pos = (sel.isValid && sel.baseOffset >= 0) ? sel.baseOffset : text.length;
+      final newText = text.replaceRange(pos, pos, picked);
+      cur.text = newText;
+      final newPos = pos + picked.length;
+      cur.selection = TextSelection.collapsed(offset: newPos);
+      setState(() {
+        _selectedIcon = picked;
+      });
+      // bring focus back to input
+      FocusScope.of(context).requestFocus(FocusNode());
     }
   }
 
@@ -974,8 +712,6 @@ class _P2PCallPageState extends State<P2PCallPage> {
         'uid': _myUid,
         'name': widget.displayName ?? 'User ${widget.currentUserId}',
         'userId': widget.currentUserId,
-        'peerIp': _myLocalIp ?? '127.0.0.1',
-        'peerPort': '9999',
       });
     } catch (e) {
       debugPrint('❌ WS connection failed: $e');
@@ -1011,15 +747,13 @@ class _P2PCallPageState extends State<P2PCallPage> {
           debugPrint('⚠️ NO PEERS RECEIVED - You are alone in room');
         }
 
-        for (final p in peersList) {
+          for (final p in peersList) {
           final peerData = p as Map<String, dynamic>;
           final uid = peerData['uid'] as String;
           final name = peerData['name'] as String? ?? uid;
-          final ip = peerData['ip'] as String?;
-          final port = peerData['port'] as String?;
+          // ip/port (P2P TCP) removed
 
-          debugPrint(
-              '🔍 Processing peer: uid=$uid, name=$name, ip=$ip, port=$port');
+            debugPrint('🔍 Processing peer: uid=$uid, name=$name');
 
           // Skip nếu đây là chính mình (duplicate connection)
           if (uid == _myUid ||
@@ -1030,22 +764,8 @@ class _P2PCallPageState extends State<P2PCallPage> {
             continue;
           }
 
-          // Store peer info for P2P
-          if (ip != null) {
-            setState(() {
-              _roomPeers[uid] = {
-                'name': name,
-                'ip': ip,
-                'port': port ?? '9999'
-              };
-            });
-            debugPrint(
-                '👤 Peer added to P2P list: $name ($uid) at $ip:${port ?? "9999"}');
-
-            // Web: offline legacy WebRTC removed in pure P2P mode
-          } else {
-            debugPrint('⚠️ Peer $uid has no IP info');
-          }
+          // P2P TCP info removed: just log peer
+          debugPrint('👤 Peer info: $name ($uid)');
 
           // Initialize WebRTC P2P Chat connection on web
           if (kIsWeb && _webrtcP2PChat != null) {
@@ -1062,15 +782,13 @@ class _P2PCallPageState extends State<P2PCallPage> {
           // Mình vào sau → mình gọi offer cho từng peer có sẵn
           await _createOfferForPeer(uid);
         }
-        debugPrint('✅ Total P2P peers in _roomPeers: ${_roomPeers.length}');
+        debugPrint('✅ Processed peers list: ${peersList.length}');
         break;
 
       case 'peer.joined':
         // 🌐 Có người mới join vào room (kèm P2P info)
         final uid = m['uid'] as String?;
         final name = m['name'] as String?;
-        final ip = m['ip'] as String?;
-        final port = m['port'] as String?;
         if (uid == null || name == null) return;
 
         // Skip nếu đây là chính mình (duplicate connection)
@@ -1079,17 +797,6 @@ class _P2PCallPageState extends State<P2PCallPage> {
             uid.startsWith('host_${widget.currentUserId}_')) {
           debugPrint('⚠️ Skip duplicate peer: $uid (same user)');
           return;
-        }
-
-        // Store peer info for P2P
-        if (ip != null) {
-          setState(() {
-            _roomPeers[uid] = {'name': name, 'ip': ip, 'port': port ?? '9999'};
-          });
-          debugPrint(
-              '👤 New peer for P2P: $name ($uid) at $ip:${port ?? "9999"}');
-
-          // Web: offline legacy WebRTC removed in pure P2P mode
         }
 
         debugPrint('🚪 Peer joined: $uid ($name)');
@@ -1174,43 +881,24 @@ class _P2PCallPageState extends State<P2PCallPage> {
         }
         break;
 
-      case 'chat':
-        // Handle both old format (fromUserId, fromName, ts) and new format (senderId, senderName, timestamp)
-        final senderId = (m['fromUserId'] ?? m['senderId']) as int?;
-        final senderName = (m['fromName'] ?? m['senderName']) as String?;
-        final text = m['text'] as String?;
-        final tsStr = (m['ts'] ?? m['timestamp']) as String?;
-        final mid = m['messageId'] as int?;
-        if (senderId != null &&
-            senderName != null &&
-            text != null &&
-            tsStr != null) {
-          final ts = DateTime.tryParse(tsStr) ?? DateTime.now();
-          // avoid duplicating our own optimistic message
-          if (senderId == widget.currentUserId && _awaitEchoText == text) {
-            _awaitEchoText = null;
-            break;
-          }
-          _handleIncomingChat(senderId, senderName, text, ts, messageId: mid);
+      // Chat history (sent by server on join)
+      case 'chat_history':
+        final msgs = (m['messages'] as List<dynamic>?) ?? [];
+        _roomMessages.clear();
+        for (final it in msgs) {
+          if (it is Map<String, dynamic>) _roomMessages.add(Map.from(it));
         }
+        setState(() {});
         break;
 
-      case 'chat_history':
-        final list = m['messages'] as List<dynamic>?;
-        if (list != null) {
-          for (final raw in list) {
-            if (raw is Map<String, dynamic>) {
-              final senderId =
-                  raw['fromUserId'] is int ? raw['fromUserId'] as int : 0;
-              final senderName = raw['fromName'] as String? ?? 'Unknown';
-              final text = raw['text'] as String? ?? '';
-              final tsStr = raw['ts'] as String?;
-              final ts = tsStr != null
-                  ? DateTime.tryParse(tsStr) ?? DateTime.now()
-                  : DateTime.now();
-              _handleIncomingChat(senderId, senderName, text, ts);
-            }
-          }
+      // New chat message broadcasted by server
+      case 'chat.message':
+      case 'chat.new':
+        final msg = m['message'] as Map<String, dynamic>?;
+        if (msg != null) {
+          _roomMessages.add(Map.from(msg));
+          // scroll or update UI
+          setState(() {});
         }
         break;
     }
@@ -1406,6 +1094,8 @@ class _P2PCallPageState extends State<P2PCallPage> {
   void dispose() {
     _ws?.sink.close();
 
+    _chatInputController.dispose();
+
     for (final peer in _peers.values) {
       peer.pc?.close();
       peer.renderer.dispose();
@@ -1456,14 +1146,11 @@ class _P2PCallPageState extends State<P2PCallPage> {
                 IconButton(
                   tooltip: 'Chat',
                   icon: Icon(
-                    Icons.chat_bubble_outline,
-                    color:
-                        _activePanel == 'chat' ? Colors.purple : Colors.black54,
+                    Icons.chat_bubble,
+                    color: _activePanel == 'chat' ? Colors.purple : Colors.black54,
                   ),
                   onPressed: () {
-                    setState(() => _activePanel == 'chat'
-                        ? _activePanel = 'none'
-                        : _activePanel = 'chat');
+                    setState(() => _activePanel = _activePanel == 'chat' ? 'none' : 'chat');
                   },
                 ),
                 IconButton(

@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_application_1/screens/authencation/initial_config_screen.dart';
-import 'package:flutter_application_1/screens/authencation/get_started_screen.dart';
 import 'package:flutter_application_1/screens/authencation/Login/signin_screen.dart';
 import 'package:flutter_application_1/screens/authencation/Sign_up/signup_info_screen.dart';
 import 'package:flutter_application_1/screens/authencation/Sign_up/signup_password_screen.dart';
 import 'home_shell.dart';
+// Removed imports related to friend/chat/message
 
 
 void main() {
@@ -18,7 +18,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Study P2P',
+      title: 'Study Call',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
@@ -80,3 +80,4 @@ Route _smoothRoute(Widget page, RouteSettings settings) {
 }
 
 // Tạm cho /home - sau thay bằng room_list_screen.dart
+// Ensure only routes, widgets, and logic related to room and task remain

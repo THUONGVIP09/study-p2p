@@ -52,7 +52,7 @@ class _SignUpPasswordScreenState extends State<SignUpPasswordScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    // Removed unused variable 'theme'
     final size = MediaQuery.of(context).size;
 
     return Scaffold(

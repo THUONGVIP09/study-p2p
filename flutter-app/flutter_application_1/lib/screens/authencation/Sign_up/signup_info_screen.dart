@@ -25,7 +25,7 @@ class _SignUpInfoScreenState extends State<SignUpInfoScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    // Removed unused variable 'theme'
     final size = MediaQuery.of(context).size;
 
     return Scaffold(
@@ -150,7 +150,6 @@ class _SignUpInfoScreenState extends State<SignUpInfoScreen> {
 
 class _RoundedField extends StatelessWidget {
   final String hint;
-  final bool obscure;
   final TextInputType? keyboardType;
   final TextEditingController? controller;
   final String? Function(String?)? validator;
@@ -158,7 +157,6 @@ class _RoundedField extends StatelessWidget {
   const _RoundedField({
     required this.hint,
     this.keyboardType,
-    this.obscure = false,
     this.controller,
     this.validator,
   });
@@ -167,7 +165,6 @@ class _RoundedField extends StatelessWidget {
   Widget build(BuildContext context) {
     return TextFormField(
       controller: controller,
-      obscureText: obscure,
       keyboardType: keyboardType,
       validator: validator,
       style: const TextStyle(color: Colors.white),

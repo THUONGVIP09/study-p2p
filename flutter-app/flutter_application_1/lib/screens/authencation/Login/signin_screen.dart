@@ -83,9 +83,18 @@ class _SignInScreenState extends State<SignInScreen> {
                               ],
                             ),
                             const SizedBox(height: 20),
-                            
+                            Text(
+                              'MaroMart',
+                              style: theme.textTheme.headlineSmall?.copyWith(
+                                  fontWeight: FontWeight.w800,
+                                  color: Colors.black),
+                            ),
                             const SizedBox(height: 8),
-                          
+                            Text(
+                              'MaroMart, the easy way for people to buy, sell, and connect with each other.',
+                              style: theme.textTheme.bodyMedium?.copyWith(
+                                  color: const Color(0xFF7A7A7A), height: 1.5),
+                            ),
                             const SizedBox(height: 18),
                             _RoundedField(
                               hint: 'Email...',
@@ -141,11 +150,9 @@ class _SignInScreenState extends State<SignInScreen> {
                                             await prefs.setString('userEmail',
                                                 _emailController.text.trim());
                                             // Lưu tên từ result['user']['name']
-                                            final userName =
-                                                result['user']['name'];
+                                            final userName = result['user']['name'];
                                             if (userName != null) {
-                                              await prefs.setString(
-                                                  'userName', userName);
+                                              await prefs.setString('userName', userName);
                                             }
 
                                             if (!mounted) return;
