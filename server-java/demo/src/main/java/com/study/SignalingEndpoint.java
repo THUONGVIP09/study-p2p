@@ -304,6 +304,8 @@ public class SignalingEndpoint {
         String fromName = m.has("fromName") ? m.get("fromName").getAsString() : null;
         String ts = m.has("ts") ? m.get("ts").getAsString() : Instant.now().toString();
 
+        debugPrint("chat received fromUserId=" + fromUserId + " room=" + roomCode + " text='" + text + "'");
+
         Integer generatedId = null;
         // Persist into messages table if conversation exists
         if (roomCode != null && fromUserId != null && text != null) {
@@ -337,8 +339,10 @@ public class SignalingEndpoint {
         if (generatedId != null)
           payload.put("messageId", generatedId);
 
-        if (roomCode != null)
+        if (roomCode != null) {
+          debugPrint("broadcasting chat messageId=" + generatedId + " to room=" + roomCode);
           broadcast(roomCode, payload, null);
+        }
       }
 
       case "chat.broadcast" -> {

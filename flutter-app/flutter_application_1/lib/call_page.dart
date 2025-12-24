@@ -81,6 +81,8 @@ class _P2PCallPageState extends State<P2PCallPage> {
   String _viewMode = 'grid'; // grid | list (placeholder)
   bool _isFullscreen = false; // placeholder
   String? _currentScreenSharerUid; // uid của người đang chia sẻ màn hình
+  // Recent message signatures to avoid duplicate display (senderId|text)
+  final Set<String> _recentMessageSignatures = {};
 
   @override
   void initState() {
@@ -299,6 +301,12 @@ class _P2PCallPageState extends State<P2PCallPage> {
     setState(() {
       _messages.add(msg);
     });
+    // remember signature to avoid duplicate echoes
+    _recentMessageSignatures.add('${msg.senderId}|${msg.text}');
+    // expire signature after short delay
+    Future.delayed(const Duration(seconds: 5), () {
+      _recentMessageSignatures.remove('${msg.senderId}|${msg.text}');
+    });
     _scrollChatToBottom();
 
     // Save locally
@@ -364,6 +372,12 @@ class _P2PCallPageState extends State<P2PCallPage> {
   void _handleIncomingChat(
       int senderId, String senderName, String text, DateTime ts,
       {int? messageId}) {
+    final sig = '$senderId|$text';
+    if (_recentMessageSignatures.contains(sig)) {
+      debugPrint('⏭️ Skipping duplicate incoming message: $sig');
+      return;
+    }
+
     final msg = ChatMessage(
       id: '${ts.microsecondsSinceEpoch}',
       senderId: senderId,
@@ -377,6 +391,11 @@ class _P2PCallPageState extends State<P2PCallPage> {
       _messages.add(msg);
     });
     _scrollChatToBottom();
+    // remember signature briefly to avoid duplicates across paths
+    _recentMessageSignatures.add(sig);
+    Future.delayed(const Duration(seconds: 5), () {
+      _recentMessageSignatures.remove(sig);
+    });
   }
 
   void _sendChatSignal(String text) {
