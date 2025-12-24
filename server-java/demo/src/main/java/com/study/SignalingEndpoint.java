@@ -12,7 +12,6 @@ import java.util.concurrent.*;
 @ServerEndpoint(value = "/ws")
 public class SignalingEndpoint {
 
-
   private static final Gson GSON = new Gson();
 
   // session -> context
@@ -27,9 +26,9 @@ public class SignalingEndpoint {
   static final class ClientCtx {
     String uid;
     String name;
-    String room;     // roomCode dạng ROOM-0001
-    Long userId;     // DB user ID nếu có
-    String peerIp;   // Local IP của device (cho P2P)
+    String room; // roomCode dạng ROOM-0001
+    Long userId; // DB user ID nếu có
+    String peerIp; // Local IP của device (cho P2P)
     String peerPort; // Port TCP server (default 9999)
     Instant at = Instant.now();
   }
@@ -41,8 +40,12 @@ public class SignalingEndpoint {
   }
 
   private void send(Session s, Object obj) {
-    if (s == null || !s.isOpen()) return;
-    try { s.getBasicRemote().sendText(GSON.toJson(obj)); } catch (IOException ignored) {}
+    if (s == null || !s.isOpen())
+      return;
+    try {
+      s.getBasicRemote().sendText(GSON.toJson(obj));
+    } catch (IOException ignored) {
+    }
   }
 
   private void broadcast(String room, Object obj, Session except) {
@@ -50,24 +53,35 @@ public class SignalingEndpoint {
     String msg = GSON.toJson(obj);
     for (Session ss : set) {
       if (ss.isOpen() && (except == null || ss != except)) {
-        try { ss.getBasicRemote().sendText(msg); } catch (IOException ignored) {}
+        try {
+          ss.getBasicRemote().sendText(msg);
+        } catch (IOException ignored) {
+        }
       }
     }
   }
 
   private static Long parseRoomId(String roomCode) {
     // hỗ trợ "ROOM-0007" hoặc số thuần "7"
-    if (roomCode == null || roomCode.isBlank()) return null;
+    if (roomCode == null || roomCode.isBlank())
+      return null;
     String digits = roomCode.replaceAll("\\D+", ""); // lấy phần số
-    if (digits.isEmpty()) return null;
-    try { return Long.parseLong(digits); } catch (NumberFormatException e) { return null; }
+    if (digits.isEmpty())
+      return null;
+    try {
+      return Long.parseLong(digits);
+    } catch (NumberFormatException e) {
+      return null;
+    }
   }
 
   private static boolean roomExists(long roomId) {
     try (Connection cn = Db.get();
-         PreparedStatement st = cn.prepareStatement("SELECT 1 FROM rooms WHERE id=? LIMIT 1")) {
+        PreparedStatement st = cn.prepareStatement("SELECT 1 FROM rooms WHERE id=? LIMIT 1")) {
       st.setLong(1, roomId);
-      try (ResultSet rs = st.executeQuery()) { return rs.next(); }
+      try (ResultSet rs = st.executeQuery()) {
+        return rs.next();
+      }
     } catch (SQLException e) {
       // không cứng fail; cho qua để không chặn dev flow
       return true;
@@ -90,7 +104,7 @@ public class SignalingEndpoint {
     switch (t) {
       case "join" -> {
         String roomCode = m.get("room").getAsString();
-        String uid  = m.has("uid")  ? m.get("uid").getAsString()  : UUID.randomUUID().toString();
+        String uid = m.has("uid") ? m.get("uid").getAsString() : UUID.randomUUID().toString();
         String name = m.has("name") ? m.get("name").getAsString() : ("U-" + uid.substring(0, 6));
         Long userId = m.has("userId") ? m.get("userId").getAsLong() : null;
         String peerIp = m.has("peerIp") ? m.get("peerIp").getAsString() : "127.0.0.1";
@@ -99,7 +113,7 @@ public class SignalingEndpoint {
         // Nếu có userId, ưu tiên lấy display_name từ DB để hiển thị đúng
         if (userId != null) {
           try (Connection cn = Db.get();
-               PreparedStatement st = cn.prepareStatement("SELECT display_name FROM users WHERE id=? LIMIT 1")) {
+              PreparedStatement st = cn.prepareStatement("SELECT display_name FROM users WHERE id=? LIMIT 1")) {
             st.setLong(1, userId);
             try (ResultSet rs = st.executeQuery()) {
               if (rs.next()) {
@@ -116,14 +130,21 @@ public class SignalingEndpoint {
 
         Long roomId = parseRoomId(roomCode);
         if (roomId == null || !roomExists(roomId)) {
-          send(s, Map.of("t","error","code","ROOM_NOT_FOUND","room", roomCode));
-          try { s.close(new CloseReason(CloseReason.CloseCodes.CANNOT_ACCEPT, "Room not found")); } catch (IOException ignored) {}
+          send(s, Map.of("t", "error", "code", "ROOM_NOT_FOUND", "room", roomCode));
+          try {
+            s.close(new CloseReason(CloseReason.CloseCodes.CANNOT_ACCEPT, "Room not found"));
+          } catch (IOException ignored) {
+          }
           return;
         }
 
         ClientCtx ctx = CLIENTS.get(s);
-        ctx.uid = uid; ctx.name = name; ctx.room = roomCode; ctx.userId = userId; 
-        ctx.peerIp = peerIp; ctx.peerPort = peerPort;
+        ctx.uid = uid;
+        ctx.name = name;
+        ctx.room = roomCode;
+        ctx.userId = userId;
+        ctx.peerIp = peerIp;
+        ctx.peerPort = peerPort;
 
         UID_INDEX.put(uid, s);
         ROOM_SESS.computeIfAbsent(roomCode, k -> ConcurrentHashMap.newKeySet()).add(s);
@@ -131,16 +152,17 @@ public class SignalingEndpoint {
         // Trả danh sách peers đang online (trừ mình) - bao gồm P2P info
         List<Map<String, Object>> peers = new ArrayList<>();
         for (Session ss : ROOM_SESS.get(roomCode)) {
-          if (ss == s) continue;
+          if (ss == s)
+            continue;
           ClientCtx c = CLIENTS.get(ss);
-          if (c != null) peers.add(Map.of(
-            "uid", c.uid, 
-            "name", c.name,
-            "ip", c.peerIp,
-            "port", c.peerPort
-          ));
+          if (c != null)
+            peers.add(Map.of(
+                "uid", c.uid,
+                "name", c.name,
+                "ip", c.peerIp,
+                "port", c.peerPort));
         }
-        send(s, Map.of("t","peers","peers", peers));
+        send(s, Map.of("t", "peers", "peers", peers));
 
         // Gửi lịch sử chat từ DB cho người mới (nếu có)
         Long rId = parseRoomId(roomCode);
@@ -149,25 +171,24 @@ public class SignalingEndpoint {
           if (convId != null) {
             List<Map<String, Object>> history = loadChatHistory(convId);
             if (!history.isEmpty()) {
-              send(s, Map.of("t","chat_history","messages", history));
+              send(s, Map.of("t", "chat_history", "messages", history));
             }
           }
         }
 
         // Thông báo mọi người có người mới (kèm P2P info)
         broadcast(roomCode, Map.of(
-          "t","peer.joined",
-          "uid", uid, 
-          "name", name,
-          "ip", peerIp,
-          "port", peerPort
-        ), s);
+            "t", "peer.joined",
+            "uid", uid,
+            "name", name,
+            "ip", peerIp,
+            "port", peerPort), s);
       }
 
       case "leave" -> {
         ClientCtx c = CLIENTS.get(s);
         if (c != null && c.room != null) {
-          broadcast(c.room, Map.of("t","peer.left","uid", c.uid), s);
+          broadcast(c.room, Map.of("t", "peer.left", "uid", c.uid), s);
           ROOM_SESS.getOrDefault(c.room, Set.of()).remove(s);
           // Nếu phòng trống: không cần dọn lịch sử (đã ở DB)
         }
@@ -178,14 +199,14 @@ public class SignalingEndpoint {
         String roomCode = m.get("room").getAsString();
         String requestId = UUID.randomUUID().toString();
         ClientCtx requester = CLIENTS.get(s);
-        if (requester == null) return;
+        if (requester == null)
+          return;
 
         // Lưu request
         Map<String, String> req = Map.of(
-          "requestId", requestId,
-          "uid", requester.uid,
-          "name", requester.name
-        );
+            "requestId", requestId,
+            "uid", requester.uid,
+            "name", requester.name);
         PENDING_REQUESTS.computeIfAbsent(roomCode, k -> new CopyOnWriteArrayList<>()).add(req);
 
         // Tìm host (created_by)
@@ -196,12 +217,11 @@ public class SignalingEndpoint {
             ClientCtx c = CLIENTS.get(ss);
             if (c != null && hostUserId.equals(c.userId)) {
               send(ss, Map.of(
-                "t", "join_request",
-                "requestId", requestId,
-                "uid", requester.uid,
-                "name", requester.name,
-                "room", roomCode
-              ));
+                  "t", "join_request",
+                  "requestId", requestId,
+                  "uid", requester.uid,
+                  "name", requester.name,
+                  "room", roomCode));
               break;
             }
           }
@@ -214,7 +234,7 @@ public class SignalingEndpoint {
       case "join_approved" -> {
         String requestId = m.get("requestId").getAsString();
         String roomCode = m.get("room").getAsString();
-        
+
         // Tìm requester
         List<Map<String, String>> pending = PENDING_REQUESTS.get(roomCode);
         if (pending != null) {
@@ -235,7 +255,7 @@ public class SignalingEndpoint {
       case "join_rejected" -> {
         String requestId = m.get("requestId").getAsString();
         String roomCode = m.get("room").getAsString();
-        
+
         List<Map<String, String>> pending = PENDING_REQUESTS.get(roomCode);
         if (pending != null) {
           for (Map<String, String> req : pending) {
@@ -256,7 +276,8 @@ public class SignalingEndpoint {
       case "offer", "answer", "ice" -> {
         String to = m.get("to").getAsString();
         Session dst = UID_INDEX.get(to);
-        if (dst != null && dst.isOpen()) send(dst, m);
+        if (dst != null && dst.isOpen())
+          send(dst, m);
       }
 
       // Kick a user by uid (host only in future, for now no auth check)
@@ -266,16 +287,58 @@ public class SignalingEndpoint {
         Session target = UID_INDEX.get(uid);
         if (target != null && target.isOpen()) {
           send(target, Map.of("t", "peer.kicked", "uid", uid));
-          try { target.close(new CloseReason(CloseReason.CloseCodes.NORMAL_CLOSURE, "Kicked")); } catch (IOException ignored) {}
+          try {
+            target.close(new CloseReason(CloseReason.CloseCodes.NORMAL_CLOSURE, "Kicked"));
+          } catch (IOException ignored) {
+          }
         }
         // broadcast to room that user was removed
-        broadcast(roomCode, Map.of("t","peer.left","uid", uid), null);
+        broadcast(roomCode, Map.of("t", "peer.left", "uid", uid), null);
       }
 
       case "chat" -> {
-        // P2P mode: server KHÔNG relay chat
-        // Chat đi trực tiếp peer-to-peer qua WebRTC DataChannel (web) hoặc TCP (mobile)
-        debugPrint("⏭️ Skipping chat relay (pure P2P mode)");
+        // Handle public room chat: try to persist to DB and broadcast to room
+        String roomCode = m.has("roomCode") ? m.get("roomCode").getAsString() : null;
+        String text = m.has("text") ? m.get("text").getAsString() : null;
+        Long fromUserId = m.has("fromUserId") ? m.get("fromUserId").getAsLong() : null;
+        String fromName = m.has("fromName") ? m.get("fromName").getAsString() : null;
+        String ts = m.has("ts") ? m.get("ts").getAsString() : Instant.now().toString();
+
+        Integer generatedId = null;
+        // Persist into messages table if conversation exists
+        if (roomCode != null && fromUserId != null && text != null) {
+          Long roomId = parseRoomId(roomCode);
+          Long convId = getConversationId(roomId);
+          if (convId != null) {
+            String insert = "INSERT INTO messages (conversation_id, sender_id, content, created_at) VALUES (?, ?, ?, CURRENT_TIMESTAMP)";
+            try (Connection cn = Db.get();
+                PreparedStatement st = cn.prepareStatement(insert, Statement.RETURN_GENERATED_KEYS)) {
+              st.setLong(1, convId);
+              st.setLong(2, fromUserId);
+              st.setString(3, text);
+              st.executeUpdate();
+              try (ResultSet keys = st.getGeneratedKeys()) {
+                if (keys.next())
+                  generatedId = keys.getInt(1);
+              }
+            } catch (SQLException e) {
+              e.printStackTrace();
+            }
+          }
+        }
+
+        // Broadcast normalized chat message to room (include messageId when available)
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("t", "chat");
+        payload.put("fromUserId", fromUserId != null ? fromUserId.intValue() : 0);
+        payload.put("fromName", fromName != null ? fromName : "Unknown");
+        payload.put("text", text != null ? text : "");
+        payload.put("ts", ts);
+        if (generatedId != null)
+          payload.put("messageId", generatedId);
+
+        if (roomCode != null)
+          broadcast(roomCode, payload, null);
       }
 
       case "chat.broadcast" -> {
@@ -287,11 +350,11 @@ public class SignalingEndpoint {
         // WebRTC P2P signaling: forward offer to specific peer
         String targetUid = m.has("targetUid") ? m.get("targetUid").getAsString() : null;
         String sdp = m.has("sdp") ? m.get("sdp").getAsString() : null;
-        
+
         if (targetUid != null && sdp != null) {
           ClientCtx ctx = CLIENTS.get(s);
           Session targetSess = UID_INDEX.get(targetUid);
-          
+
           if (targetSess != null && ctx != null) {
             Map<String, Object> payload = new LinkedHashMap<>();
             payload.put("t", "webrtc.offer");
@@ -307,11 +370,11 @@ public class SignalingEndpoint {
         // WebRTC P2P signaling: forward answer to specific peer
         String targetUid = m.has("targetUid") ? m.get("targetUid").getAsString() : null;
         String sdp = m.has("sdp") ? m.get("sdp").getAsString() : null;
-        
+
         if (targetUid != null && sdp != null) {
           ClientCtx ctx = CLIENTS.get(s);
           Session targetSess = UID_INDEX.get(targetUid);
-          
+
           if (targetSess != null && ctx != null) {
             Map<String, Object> payload = new LinkedHashMap<>();
             payload.put("t", "webrtc.answer");
@@ -328,11 +391,11 @@ public class SignalingEndpoint {
         String candidate = m.has("candidate") ? m.get("candidate").getAsString() : null;
         String sdpMid = m.has("sdpMid") ? m.get("sdpMid").getAsString() : null;
         int sdpMLineIndex = m.has("sdpMLineIndex") ? m.get("sdpMLineIndex").getAsInt() : 0;
-        
+
         if (targetUid != null && candidate != null) {
           ClientCtx ctx = CLIENTS.get(s);
           Session targetSess = UID_INDEX.get(targetUid);
-          
+
           if (targetSess != null && ctx != null) {
             Map<String, Object> payload = new LinkedHashMap<>();
             payload.put("t", "webrtc.ice");
@@ -345,7 +408,8 @@ public class SignalingEndpoint {
         }
       }
 
-      default -> { /* ignore */ }
+      default -> {
+        /* ignore */ }
     }
   }
 
@@ -356,7 +420,7 @@ public class SignalingEndpoint {
       UID_INDEX.remove(c.uid);
       if (c.room != null) {
         ROOM_SESS.getOrDefault(c.room, Set.of()).remove(s);
-        broadcast(c.room, Map.of("t","peer.left","uid", c.uid), s);
+        broadcast(c.room, Map.of("t", "peer.left", "uid", c.uid), s);
         // không cần xóa lịch sử (đã lưu DB)
       }
     }
@@ -369,12 +433,14 @@ public class SignalingEndpoint {
 
   private static Long getHostUserId(String roomCode) {
     Long roomId = parseRoomId(roomCode);
-    if (roomId == null) return null;
+    if (roomId == null)
+      return null;
     try (Connection cn = Db.get();
-         PreparedStatement st = cn.prepareStatement("SELECT created_by FROM rooms WHERE id=? LIMIT 1")) {
+        PreparedStatement st = cn.prepareStatement("SELECT created_by FROM rooms WHERE id=? LIMIT 1")) {
       st.setLong(1, roomId);
       try (ResultSet rs = st.executeQuery()) {
-        if (rs.next()) return rs.getLong("created_by");
+        if (rs.next())
+          return rs.getLong("created_by");
       }
     } catch (SQLException e) {
       e.printStackTrace();
@@ -383,12 +449,14 @@ public class SignalingEndpoint {
   }
 
   private static Long getConversationId(Long roomId) {
-    if (roomId == null) return null;
+    if (roomId == null)
+      return null;
     try (Connection cn = Db.get();
-         PreparedStatement st = cn.prepareStatement("SELECT conversation_id FROM rooms WHERE id=? LIMIT 1")) {
+        PreparedStatement st = cn.prepareStatement("SELECT conversation_id FROM rooms WHERE id=? LIMIT 1")) {
       st.setLong(1, roomId);
       try (ResultSet rs = st.executeQuery()) {
-        if (rs.next()) return rs.getLong("conversation_id");
+        if (rs.next())
+          return rs.getLong("conversation_id");
       }
     } catch (SQLException e) {
       e.printStackTrace();
@@ -398,12 +466,13 @@ public class SignalingEndpoint {
 
   private static List<Map<String, Object>> loadChatHistory(Long conversationId) {
     List<Map<String, Object>> out = new ArrayList<>();
-    if (conversationId == null) return out;
+    if (conversationId == null)
+      return out;
     String sql = "SELECT m.id, m.sender_id, u.display_name, m.content, m.created_at " +
-                 "FROM messages m JOIN users u ON u.id = m.sender_id " +
-                 "WHERE m.conversation_id = ? ORDER BY m.created_at ASC LIMIT 200";
+        "FROM messages m JOIN users u ON u.id = m.sender_id " +
+        "WHERE m.conversation_id = ? ORDER BY m.created_at ASC LIMIT 200";
     try (Connection cn = Db.get();
-         PreparedStatement st = cn.prepareStatement(sql)) {
+        PreparedStatement st = cn.prepareStatement(sql)) {
       st.setLong(1, conversationId);
       try (ResultSet rs = st.executeQuery()) {
         while (rs.next()) {
@@ -414,12 +483,11 @@ public class SignalingEndpoint {
           Timestamp created = rs.getTimestamp("created_at");
           String ts = created != null ? created.toInstant().toString() : Instant.now().toString();
           out.add(Map.of(
-            "messageId", mid,
-            "fromUserId", (int) senderId,
-            "fromName", name != null ? name : ("U-" + senderId),
-            "text", content != null ? content : "",
-            "ts", ts
-          ));
+              "messageId", mid,
+              "fromUserId", (int) senderId,
+              "fromName", name != null ? name : ("U-" + senderId),
+              "text", content != null ? content : "",
+              "ts", ts));
         }
       }
     } catch (SQLException e) {

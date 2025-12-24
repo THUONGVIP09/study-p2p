@@ -317,6 +317,9 @@ class _P2PCallPageState extends State<P2PCallPage> {
     // Send via P2P to all peers in room
     _broadcastToPeersP2P(
         text, widget.currentUserId, widget.displayName ?? 'You', timestamp);
+
+    // Also send to server so it can persist and relay to all clients (reliable fallback)
+    _sendChatSignal(text);
   }
 
   Future<void> _broadcastToPeersP2P(
@@ -1022,11 +1025,8 @@ class _P2PCallPageState extends State<P2PCallPage> {
               '🔍 Processing peer: uid=$uid, name=$name, ip=$ip, port=$port');
 
           // Skip nếu đây là chính mình (duplicate connection)
-          if (uid == _myUid ||
-              uid.startsWith('${widget.currentUserId}-') ||
-              uid.startsWith('host_${widget.currentUserId}_')) {
-            debugPrint(
-                '⚠️ Skip duplicate peer in peers list: $uid (same user)');
+          if (uid == _myUid) {
+            debugPrint('⚠️ Skip duplicate peer in peers list: $uid (self)');
             continue;
           }
 
@@ -1074,10 +1074,8 @@ class _P2PCallPageState extends State<P2PCallPage> {
         if (uid == null || name == null) return;
 
         // Skip nếu đây là chính mình (duplicate connection)
-        if (uid == _myUid ||
-            uid.startsWith('${widget.currentUserId}-') ||
-            uid.startsWith('host_${widget.currentUserId}_')) {
-          debugPrint('⚠️ Skip duplicate peer: $uid (same user)');
+        if (uid == _myUid) {
+          debugPrint('⚠️ Skip duplicate peer: $uid (self)');
           return;
         }
 
