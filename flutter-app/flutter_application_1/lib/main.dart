@@ -1,15 +1,45 @@
 import 'package:flutter/material.dart';
+import 'dart:io' show Platform;
 import 'package:flutter_application_1/screens/authencation/initial_config_screen.dart';
+import 'package:flutter_application_1/screens/authencation/get_started_screen.dart';
 import 'package:flutter_application_1/screens/authencation/Login/signin_screen.dart';
 import 'package:flutter_application_1/screens/authencation/Sign_up/signup_info_screen.dart';
 import 'package:flutter_application_1/screens/authencation/Sign_up/signup_password_screen.dart';
+import 'package:flutter_application_1/services/network_helper.dart';
+import 'package:flutter_application_1/services/p2p_websocket_server.dart';
 import 'home_shell.dart';
-// Removed imports related to friend/chat/message
 
-
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // ✅ Khởi tạo P2P WebSocket server NGAY từ đầu (chỉ trên mobile/desktop)
+  // Web không hỗ trợ ServerSocket.bind nên bỏ qua
+  // Server này chạy ở background, sẵn sàng nhận tin từ peers
+  try {
+    // Check nếu không phải web platform
+    if (!_isWebPlatform()) {
+      final localIp = await NetworkHelper.getLocalIpAddress();
+      print('🚀 [MAIN] Starting P2P WebSocket server...');
+      await P2PWebSocketServer.getInstance().initialize(localIp: localIp);
+      print('✅ [MAIN] P2P WebSocket server ready');
+    } else {
+      print('ℹ️ [MAIN] Skipping P2P server on web platform');
+    }
+  } catch (e) {
+    print('⚠️ [MAIN] Failed to start P2P server: $e');
+  }
+
   runApp(const MyApp());
+}
+
+/// Check nếu đang chạy web
+bool _isWebPlatform() {
+  try {
+    return !Platform.isAndroid && !Platform.isIOS && !Platform.isWindows && !Platform.isLinux && !Platform.isMacOS;
+  } catch (e) {
+    // Nếu không thể kiểm tra (web platform) -> return true
+    return true;
+  }
 }
 
 class MyApp extends StatelessWidget {
@@ -18,7 +48,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Study Call',
+      title: 'Study P2P',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
@@ -80,4 +110,3 @@ Route _smoothRoute(Widget page, RouteSettings settings) {
 }
 
 // Tạm cho /home - sau thay bằng room_list_screen.dart
-// Ensure only routes, widgets, and logic related to room and task remain

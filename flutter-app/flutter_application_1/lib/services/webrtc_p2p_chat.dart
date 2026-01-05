@@ -58,7 +58,7 @@ class WebRTCP2PChat {
   /// Init peer connection cho 1 peer cụ thể
   Future<void> initPeerConnection(String peerId) async {
     if (!kIsWeb) {
-      debugPrint('⚠️ WebRTC chat only for web');
+      debugPrint('⚠️ WebRTC P2P chat only for web');
       return;
     }
 
@@ -109,7 +109,7 @@ class WebRTCP2PChat {
     channel.onMessage = (message) {
       try {
         final data = jsonDecode(message.text) as Map<String, dynamic>;
-        debugPrint('📨 Received  message from $peerId: ${data['text']}');
+        debugPrint('📨 Received P2P message from $peerId: ${data['text']}');
         onMessageReceived?.call(peerId, data);
       } catch (e) {
         debugPrint('❌ Failed to parse message: $e');
@@ -119,7 +119,7 @@ class WebRTCP2PChat {
     channel.onDataChannelState = (RTCDataChannelState state) {
       if (state == RTCDataChannelState.RTCDataChannelOpen) {
         debugPrint('✅ Data channel opened with $peerId');
-        debugPrint('🟢 Ready to send messages to $peerId');
+        debugPrint('🟢 Ready to send P2P messages to $peerId');
       } else if (state == RTCDataChannelState.RTCDataChannelClosed) {
         debugPrint('🔌 Data channel closed with $peerId');
       } else {
@@ -216,11 +216,10 @@ class WebRTCP2PChat {
         sdpMLineIndex,
       );
 
-      // Check if remote description is set
-      if (pc.getRemoteDescription() != null) {
+      // Try to add candidate; if it fails (remote desc not ready), queue it.
+      try {
         await pc.addCandidate(iceCandidate);
-      } else {
-        // Queue candidate until remote description is set
+      } catch (e) {
         _pendingCandidates.putIfAbsent(fromUid, () => []).add(iceCandidate);
       }
     } catch (e) {
@@ -240,7 +239,7 @@ class WebRTCP2PChat {
 
       final json = jsonEncode(message);
       channel.send(RTCDataChannelMessage(json));
-      debugPrint('✅ Sent message to $peerId');
+      debugPrint('✅ Sent P2P message to $peerId');
       return true;
     } catch (e) {
       debugPrint('❌ Failed to send to $peerId: $e');
@@ -274,6 +273,6 @@ class WebRTCP2PChat {
     for (final peerId in _peerConnections.keys.toList()) {
       await closePeer(peerId);
     }
-    debugPrint('🛑 WebRTC Chat disposed');
+    debugPrint('🛑 WebRTC P2P Chat disposed');
   }
 }

@@ -297,52 +297,9 @@ public class SignalingEndpoint {
       }
 
       case "chat" -> {
-        // Handle public room chat: save to DB and broadcast to room
-        String text = m.has("text") ? m.get("text").getAsString() : null;
-        ClientCtx ctx = CLIENTS.get(s);
-        String roomCode = (ctx != null && ctx.room != null) ? ctx.room
-            : (m.has("room") ? m.get("room").getAsString() : null);
-        Long roomId = parseRoomId(roomCode);
-        Long convId = getConversationId(roomId);
-
-        String icon = m.has("icon") ? m.get("icon").getAsString() : null;
-        if (text != null && convId != null) {
-          try (Connection cn = Db.get();
-              PreparedStatement st = cn.prepareStatement(
-                  "INSERT INTO messages (conversation_id, sender_id, content, created_at) VALUES (?, ?, ?, CURRENT_TIMESTAMP)",
-                  PreparedStatement.RETURN_GENERATED_KEYS)) {
-            st.setLong(1, convId);
-            if (ctx != null && ctx.userId != null)
-              st.setLong(2, ctx.userId);
-            else
-              st.setNull(2, java.sql.Types.BIGINT);
-            st.setString(3, text);
-            st.executeUpdate();
-            long mid = -1L;
-            try (ResultSet keys = st.getGeneratedKeys()) {
-              if (keys != null && keys.next())
-                mid = keys.getLong(1);
-            }
-
-            String senderName = (ctx != null && ctx.name != null) ? ctx.name : "Unknown";
-            Integer fromUserId = (ctx != null && ctx.userId != null) ? ctx.userId.intValue() : null;
-            String ts = Instant.now().toString();
-
-            Map<String, Object> msg = new LinkedHashMap<>();
-            msg.put("messageId", mid);
-            msg.put("fromUserId", fromUserId);
-            msg.put("fromName", senderName);
-            msg.put("text", text);
-            if (icon != null)
-              msg.put("icon", icon);
-            msg.put("ts", ts);
-
-            // Broadcast to everyone in room (including sender)
-            broadcast(roomCode, Map.of("t", "chat.message", "message", msg), null);
-          } catch (SQLException e) {
-            e.printStackTrace();
-          }
-        }
+        // P2P mode: server KHÔNG relay chat
+        // Chat đi trực tiếp peer-to-peer qua WebRTC DataChannel (web) hoặc TCP (mobile)
+        debugPrint("⏭️ Skipping chat relay (pure P2P mode)");
       }
 
       case "chat.broadcast" -> {

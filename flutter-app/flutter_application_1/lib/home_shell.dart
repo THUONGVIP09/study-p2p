@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_application_1/screens/rooms/rooms_page.dart';
+import 'package:flutter_application_1/screens/friends/friends_screen.dart';
 import 'call_page.dart';
 import 'package:flutter_application_1/screens/tasks/tasks_list.dart';
-// Conversations / Friends UI removed — placeholders used instead
+import 'package:flutter_application_1/screens/chat/conversations_screen.dart';
 import 'package:flutter_application_1/widgets/server_ip_indicator.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -20,6 +21,8 @@ class _HomeShellState extends State<HomeShell> {
   final tabs = <_TabItem>[
     _TabItem(icon: Icons.videocam_off_rounded, label: 'Call'),
     _TabItem(icon: Icons.description_rounded, label: 'Notes'),
+    _TabItem(icon: Icons.group_rounded, label: 'Members'),
+    _TabItem(icon: Icons.chat_bubble_rounded, label: 'Chat'),
   ];
 
   // Ba nút mờ phía dưới (chưa active)
@@ -76,6 +79,8 @@ class _HomeShellState extends State<HomeShell> {
                   children: [
                     const RoomsPage(),
                     const TasksListScreen(), // Notes -> Tasks
+                    const FriendsScreen(), // Members
+                    const ConversationsScreen(), // Conversations (Messages)
                   ],
                 ),
               ),
