@@ -181,13 +181,15 @@ public class RoomsController {
         }
         // Giải mã roomCode -> roomId
         long roomId = decodeRoomCode(req.roomCode());
-        if (roomId <= 0) return bad("roomCode không hợp lệ");
+        if (roomId <= 0)
+            return bad("roomCode không hợp lệ");
 
         String sql = "SELECT visibility, passcode, created_by FROM rooms WHERE id = ?";
         try (Connection con = Db.get(); PreparedStatement ps = con.prepareStatement(sql)) {
             ps.setLong(1, roomId);
             try (ResultSet rs = ps.executeQuery()) {
-                if (!rs.next()) return bad("Room không tồn tại");
+                if (!rs.next())
+                    return bad("Room không tồn tại");
                 String vis = rs.getString("visibility");
                 String storedPass = rs.getString("passcode");
 
@@ -221,6 +223,87 @@ public class RoomsController {
         }
     }
 
+    // ========= XÓA PHÒNG =========
+    @DELETE
+    @Path("/{roomId}")
+    public Response deleteRoom(@PathParam("roomId") long roomId, @HeaderParam("X-User-Id") Long userId) {
+        if (roomId <= 0) {
+            return bad("roomId không hợp lệ");
+        }
+
+        try (Connection con = Db.get()) {
+            // Kiểm tra quyền xóa (chỉ chủ phòng mới được xóa)
+            String checkSql = "SELECT created_by, conversation_id FROM rooms WHERE id = ?";
+            long createdBy = 0;
+            long conversationId = 0;
+            try (PreparedStatement ps = con.prepareStatement(checkSql)) {
+                ps.setLong(1, roomId);
+                try (ResultSet rs = ps.executeQuery()) {
+                    if (!rs.next()) {
+                        return bad("Room không tồn tại");
+                    }
+                    createdBy = rs.getLong("created_by");
+                    conversationId = rs.getLong("conversation_id");
+                }
+            }
+
+            // Optional: check userId header for authorization
+            // if (userId != null && userId != createdBy) {
+            // return bad("Bạn không có quyền xóa phòng này");
+            // }
+
+            con.setAutoCommit(false);
+
+            // 1) Xóa room_members
+            try (PreparedStatement ps = con.prepareStatement("DELETE FROM room_members WHERE room_id = ?")) {
+                ps.setLong(1, roomId);
+                ps.executeUpdate();
+            }
+
+            // 2) Xóa call_participants (nếu có)
+            try (PreparedStatement ps = con.prepareStatement(
+                    "DELETE FROM call_participants WHERE call_id IN (SELECT id FROM call_sessions WHERE room_id = ?)")) {
+                ps.setLong(1, roomId);
+                ps.executeUpdate();
+            }
+
+            // 3) Xóa call_sessions (nếu có)
+            try (PreparedStatement ps = con.prepareStatement("DELETE FROM call_sessions WHERE room_id = ?")) {
+                ps.setLong(1, roomId);
+                ps.executeUpdate();
+            }
+
+            // 4) Xóa messages liên quan đến conversation (nếu có)
+            if (conversationId > 0) {
+                try (PreparedStatement ps = con.prepareStatement("DELETE FROM messages WHERE conversation_id = ?")) {
+                    ps.setLong(1, conversationId);
+                    ps.executeUpdate();
+                }
+            }
+
+            // 5) Xóa room
+            try (PreparedStatement ps = con.prepareStatement("DELETE FROM rooms WHERE id = ?")) {
+                ps.setLong(1, roomId);
+                ps.executeUpdate();
+            }
+
+            // 6) Xóa conversation (nếu có)
+            if (conversationId > 0) {
+                try (PreparedStatement ps = con.prepareStatement("DELETE FROM conversations WHERE id = ?")) {
+                    ps.setLong(1, conversationId);
+                    ps.executeUpdate();
+                }
+            }
+
+            con.commit();
+            return Response.ok(new ApiResponse<>(true, "Xóa phòng thành công", null)).build();
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return server("Lỗi DB: " + e.getMessage());
+        }
+    }
+
     // ========= Helpers =========
 
     private String normalizeVisibility(String vis) {
@@ -240,8 +323,10 @@ public class RoomsController {
 
     private long decodeRoomCode(String roomCode) {
         try {
-            if (roomCode == null || roomCode.length() < 2) return -1;
-            if (!roomCode.startsWith("R")) return -1;
+            if (roomCode == null || roomCode.length() < 2)
+                return -1;
+            if (!roomCode.startsWith("R"))
+                return -1;
             return Long.parseLong(roomCode.substring(1));
         } catch (Exception e) {
             return -1;

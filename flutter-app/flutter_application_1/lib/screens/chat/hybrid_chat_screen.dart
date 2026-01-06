@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'dart:async';
 import '../../services/hybrid_chat_service.dart';
 import '../../services/p2p_chat_service.dart';
-import '../../services/chat_storage_service.dart';
+import '../../services/web_chat_service.dart';
+import '../../services/friend_chat_storage_service.dart';
 import '../../services/network_helper.dart';
 import '../../config/app_config.dart';
+import '../../widgets/emoji_picker_button.dart';
 
 class HybridChatScreen extends StatefulWidget {
   final int friendId;
@@ -23,8 +26,13 @@ class HybridChatScreen extends StatefulWidget {
 }
 
 class _HybridChatScreenState extends State<HybridChatScreen> {
-  late final P2PChatService _p2p;
-  late final HybridChatService _hybrid;
+  // For non-web platforms
+  P2PChatService? _p2p;
+  HybridChatService? _hybrid;
+  
+  // For web platform
+  WebChatService? _webChat;
+  
   final TextEditingController _msgCtrl = TextEditingController();
   final ScrollController _scroll = ScrollController();
   final List<Map<String, dynamic>> _messages = [];
@@ -36,8 +44,6 @@ class _HybridChatScreenState extends State<HybridChatScreen> {
   @override
   void initState() {
     super.initState();
-    _p2p = P2PChatService();
-    _hybrid = HybridChatService(currentUserId: widget.currentUserId, p2p: _p2p);
     _bootstrap();
   }
 
@@ -52,26 +58,88 @@ class _HybridChatScreenState extends State<HybridChatScreen> {
     });
 
     try {
-      // Auto-detect local IP
-      final myIp = await NetworkHelper.getLocalIpAddress();
-      print('📶 [UI] Detected local IP: $myIp');
-
       AppConfig.printConfig();
 
-      print('🔌 [UI] Starting hybrid service...');
-      await _hybrid.start(myIp: myIp);
+      if (kIsWeb) {
+        // WEB PLATFORM: Use WebSocket relay only (no raw sockets)
+        print('🌐 [UI] Web platform detected - using WebSocket relay');
+        _webChat = WebChatService(currentUserId: widget.currentUserId);
+        await _webChat!.start();
+        
+        setState(() {
+          _status = 'Via Server (Web)';
+        });
+        print('✅ [UI] Web chat connected via relay');
 
-      print('🤝 [UI] Connecting to friend ${widget.friendId}...');
-      final direct = await _hybrid.connectToFriend(widget.friendId);
-      setState(() {
-        _status = direct ? 'P2P Direct' : 'Via Server';
-      });
-      print('✅ [UI] Connection mode: ${_status}');
+        // Setup stream listener for web
+        _sub = _webChat!.stream.listen((e) {
+          if (e['friendId'] != widget.friendId) {
+            return;
+          }
+          final msg = {
+            'sender': e['sender'],
+            'content': e['content'],
+            'timestamp': e['timestamp'] ?? DateTime.now().toIso8601String(),
+          };
+          setState(() {
+            _messages.add(msg);
+          });
+          // Save received message to storage
+          FriendChatStorageService.addMessage(
+            widget.currentUserId,
+            widget.friendId,
+            msg,
+          );
+          _scrollToBottom();
+        });
+      } else {
+        // NON-WEB PLATFORM: Use P2P + Hybrid service
+        print('📱 [UI] Non-web platform - using P2P + Hybrid');
+        
+        // Auto-detect local IP
+        final myIp = await NetworkHelper.getLocalIpAddress();
+        print('📶 [UI] Detected local IP: $myIp');
+
+        _p2p = P2PChatService();
+        _hybrid = HybridChatService(currentUserId: widget.currentUserId, p2p: _p2p!);
+
+        print('🔌 [UI] Starting hybrid service...');
+        await _hybrid!.start(myIp: myIp);
+
+        print('🤝 [UI] Connecting to friend ${widget.friendId}...');
+        final direct = await _hybrid!.connectToFriend(widget.friendId);
+        setState(() {
+          _status = direct ? 'P2P Direct' : 'Via Server';
+        });
+        print('✅ [UI] Connection mode: ${_status}');
+
+        // Setup stream listener for non-web
+        _sub = _hybrid!.stream.listen((e) {
+          if (e['friendId'] != widget.friendId) {
+            return;
+          }
+          final msg = {
+            'sender': e['sender'],
+            'content': e['content'],
+            'timestamp': e['timestamp'] ?? DateTime.now().toIso8601String(),
+          };
+          setState(() {
+            _messages.add(msg);
+          });
+          // Save received message to storage
+          FriendChatStorageService.addMessage(
+            widget.currentUserId,
+            widget.friendId,
+            msg,
+          );
+          _scrollToBottom();
+        });
+      }
 
       // Load history BEFORE setting up stream listener để tránh duplicate
       print('📖 [UI] Loading chat history...');
-      final history = await ChatStorageService.getMessagesWithPeer(
-          widget.currentUserId, widget.friendId.toString());
+      final history = await FriendChatStorageService.loadMessages(
+          widget.currentUserId, widget.friendId);
       print('📖 [UI] Loaded ${history.length} messages from storage');
 
       setState(() {
@@ -80,32 +148,6 @@ class _HybridChatScreenState extends State<HybridChatScreen> {
         _isLoading = false;
       });
       print('✅ [UI] UI updated with ${_messages.length} messages');
-
-      // Setup stream listener AFTER loading history
-      print('🎧 [UI] Setting up stream listener...');
-      _sub = _hybrid.stream.listen((e) {
-        // ✅ CHỈ nhận messages của friend hiện tại!
-        if (e['friendId'] != widget.friendId) {
-          print(
-              '⏭️ [UI] Skipping message from friend ${e['friendId']} (current: ${widget.friendId})');
-          return;
-        }
-
-        print('');
-        print('📥 [UI] Received from stream: ${e['sender']} - ${e['content']}');
-        print('   Current messages count: ${_messages.length}');
-
-        setState(() {
-          _messages.add({
-            'sender': e['sender'],
-            'content': e['content'],
-            'timestamp': e['timestamp'],
-          });
-        });
-
-        print('   After add: ${_messages.length} messages');
-        _scrollToBottom();
-      });
 
       _scrollToBottom();
     } catch (e) {
@@ -129,6 +171,32 @@ class _HybridChatScreenState extends State<HybridChatScreen> {
     });
   }
 
+  String _formatTimestamp(String? isoTimestamp) {
+    if (isoTimestamp == null || isoTimestamp.isEmpty) return '';
+    try {
+      final dt = DateTime.parse(isoTimestamp);
+      final now = DateTime.now();
+      final diff = now.difference(dt);
+      
+      if (diff.inDays == 0) {
+        // Today - show time only
+        return '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+      } else if (diff.inDays == 1) {
+        // Yesterday
+        return 'Hôm qua ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+      } else if (diff.inDays < 7) {
+        // This week
+        final weekdays = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
+        return '${weekdays[dt.weekday - 1]} ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+      } else {
+        // Older
+        return '${dt.day}/${dt.month} ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+      }
+    } catch (e) {
+      return '';
+    }
+  }
+
   @override
   void dispose() {
     print('');
@@ -139,14 +207,20 @@ class _HybridChatScreenState extends State<HybridChatScreen> {
     _msgCtrl.dispose();
     _scroll.dispose();
 
-    // Đợi pending saves trước khi dispose - CRITICAL để không mất tin nhắn!
-    print('🔄 [UI] Calling HybridChatService.dispose()...');
-    _hybrid.dispose().then((_) {
-      print('✅ [UI] HybridChatService disposed after pending saves');
-    }).catchError((e) {
-      print('❌ [UI] Error disposing HybridChatService: $e');
-      print('   Stack trace: $e');
-    });
+    // Dispose appropriate service based on platform
+    if (kIsWeb) {
+      _webChat?.dispose().then((_) {
+        print('✅ [UI] WebChatService disposed');
+      }).catchError((e) {
+        print('❌ [UI] Error disposing WebChatService: $e');
+      });
+    } else {
+      _hybrid?.dispose().then((_) {
+        print('✅ [UI] HybridChatService disposed after pending saves');
+      }).catchError((e) {
+        print('❌ [UI] Error disposing HybridChatService: $e');
+      });
+    }
 
     super.dispose();
     print('✅ [UI] Widget dispose completed');
@@ -169,21 +243,41 @@ class _HybridChatScreenState extends State<HybridChatScreen> {
     _msgCtrl.clear();
 
     try {
-      // Service sẽ tự động lưu vào storage
-      print('📤 [UI] Calling hybrid.sendToFriend...');
-      await _hybrid.sendToFriend(widget.friendId, text);
+      // Send via appropriate service based on platform
+      bool success = false;
+      if (kIsWeb) {
+        success = await _webChat?.sendToFriend(widget.friendId, text) ?? false;
+      } else {
+        await _hybrid?.sendToFriend(widget.friendId, text);
+        success = true;
+      }
 
-      // Chỉ update UI
-      print('✅ [UI] Send completed, updating UI...');
-      setState(() {
-        _messages.add({
+      if (success) {
+        // Create message object
+        final msg = {
           'sender': 'me',
           'content': text,
           'timestamp': DateTime.now().toIso8601String(),
+        };
+        
+        // Update UI
+        print('✅ [UI] Send completed, updating UI...');
+        setState(() {
+          _messages.add(msg);
         });
-      });
-      print('   After add: ${_messages.length} messages');
-      _scrollToBottom();
+        print('   After add: ${_messages.length} messages');
+        
+        // Save to storage
+        await FriendChatStorageService.addMessage(
+          widget.currentUserId,
+          widget.friendId,
+          msg,
+        );
+        
+        _scrollToBottom();
+      } else {
+        throw Exception('Send failed');
+      }
     } catch (e) {
       print('❌ [UI] Send error: $e');
       ScaffoldMessenger.of(context).showSnackBar(
@@ -215,70 +309,164 @@ class _HybridChatScreenState extends State<HybridChatScreen> {
             Expanded(
               child: _isLoading
                   ? const Center(child: CircularProgressIndicator())
-                  : ListView.builder(
-                      controller: _scroll,
-                      itemCount: _messages.length,
-                      itemBuilder: (_, i) {
-                        final m = _messages[i];
-                        final isMe = m['sender'] == 'me';
-                        return Align(
-                          alignment: isMe
-                              ? Alignment.centerRight
-                              : Alignment.centerLeft,
-                          child: Container(
-                            margin: const EdgeInsets.symmetric(
-                                horizontal: 12, vertical: 6),
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 12, vertical: 8),
-                            decoration: BoxDecoration(
-                              color: isMe
-                                  ? Colors.blue.shade100
-                                  : Colors.grey.shade300,
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Text(m['content'] ?? ''),
+                  : _messages.isEmpty
+                      ? Center(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.chat_bubble_outline, 
+                                size: 64, color: Colors.grey.shade400),
+                              const SizedBox(height: 16),
+                              Text(
+                                'Chưa có tin nhắn nào',
+                                style: TextStyle(
+                                  color: Colors.grey.shade600,
+                                  fontSize: 16,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                'Bắt đầu cuộc trò chuyện!',
+                                style: TextStyle(
+                                  color: Colors.grey.shade400,
+                                  fontSize: 14,
+                                ),
+                              ),
+                            ],
                           ),
-                        );
-                      },
-                    ),
+                        )
+                      : ListView.builder(
+                          controller: _scroll,
+                          padding: const EdgeInsets.symmetric(vertical: 8),
+                          itemCount: _messages.length,
+                          itemBuilder: (_, i) {
+                            final m = _messages[i];
+                            final isMe = m['sender'] == 'me';
+                            final timestamp = _formatTimestamp(m['timestamp']);
+                            return Align(
+                              alignment: isMe
+                                  ? Alignment.centerRight
+                                  : Alignment.centerLeft,
+                              child: Container(
+                                constraints: BoxConstraints(
+                                  maxWidth: MediaQuery.of(context).size.width * 0.75,
+                                ),
+                                margin: const EdgeInsets.symmetric(
+                                    horizontal: 12, vertical: 4),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 14, vertical: 10),
+                                decoration: BoxDecoration(
+                                  color: isMe
+                                      ? Colors.blue.shade100
+                                      : Colors.grey.shade200,
+                                  borderRadius: BorderRadius.only(
+                                    topLeft: const Radius.circular(16),
+                                    topRight: const Radius.circular(16),
+                                    bottomLeft: Radius.circular(isMe ? 16 : 4),
+                                    bottomRight: Radius.circular(isMe ? 4 : 16),
+                                  ),
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: isMe 
+                                      ? CrossAxisAlignment.end 
+                                      : CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      m['content'] ?? '',
+                                      style: const TextStyle(fontSize: 15),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      timestamp,
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        color: Colors.grey.shade600,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          },
+                        ),
             ),
             SafeArea(
-              child: Row(children: [
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.all(8.0),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade100,
+                  border: Border(
+                    top: BorderSide(color: Colors.grey.shade300),
+                  ),
+                ),
+                child: Row(children: [
+                  // Emoji picker button
+                  EmojiPickerButton(
+                    onEmojiSelected: (emoji) {
+                      // Insert emoji at cursor position
+                      final text = _msgCtrl.text;
+                      final selection = _msgCtrl.selection;
+                      final newText = text.replaceRange(
+                        selection.start,
+                        selection.end,
+                        emoji,
+                      );
+                      _msgCtrl.text = newText;
+                      _msgCtrl.selection = TextSelection.collapsed(
+                        offset: selection.start + emoji.length,
+                      );
+                    },
+                  ),
+                  // Text input
+                  Expanded(
                     child: TextField(
                       controller: _msgCtrl,
-                      enabled: !_isLoading &&
-                          !_isSending, // Disable khi loading/sending
+                      enabled: !_isLoading && !_isSending,
                       decoration: InputDecoration(
                         hintText: _isLoading
                             ? 'Loading...'
                             : _isSending
                                 ? 'Sending...'
                                 : 'Type a message...',
-                        border: const OutlineInputBorder(),
+                        filled: true,
+                        fillColor: Colors.white,
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 10,
+                        ),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(24),
+                          borderSide: BorderSide.none,
+                        ),
                       ),
+                      onSubmitted: (_) => _send(),
                     ),
                   ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.only(right: 8.0),
-                  child: ElevatedButton(
-                    onPressed: (_isLoading || _isSending) ? null : _send,
-                    child: _isSending
-                        ? const SizedBox(
-                            width: 16,
-                            height: 16,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Colors.white,
-                            ),
-                          )
-                        : const Text('Send'),
+                  const SizedBox(width: 8),
+                  // Send button
+                  Container(
+                    decoration: BoxDecoration(
+                      color: (_isLoading || _isSending) 
+                          ? Colors.grey 
+                          : Colors.blue,
+                      shape: BoxShape.circle,
+                    ),
+                    child: IconButton(
+                      onPressed: (_isLoading || _isSending) ? null : _send,
+                      icon: _isSending
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                          : const Icon(Icons.send, color: Colors.white),
+                    ),
                   ),
-                )
-              ]),
+                ]),
+              ),
             )
           ]),
           // Overlay khi đang loading để block toàn bộ UI

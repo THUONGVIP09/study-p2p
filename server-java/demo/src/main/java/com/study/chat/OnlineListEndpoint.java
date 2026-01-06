@@ -2,6 +2,7 @@ package com.study.chat;
 
 import jakarta.websocket.OnClose;
 import jakarta.websocket.OnError;
+import jakarta.websocket.OnMessage;
 import jakarta.websocket.OnOpen;
 import jakarta.websocket.Session;
 import jakarta.websocket.server.ServerEndpoint;
@@ -24,14 +25,15 @@ public class OnlineListEndpoint {
     @OnOpen
     public void onOpen(Session session) {
         sessions.add(session);
-        System.out.println("✅ Client subscribed to online list");
-        broadcastList();
+        System.out.println("✅ Client subscribed to online list (total: " + sessions.size() + ")");
+        // Send current list immediately to new subscriber
+        sendListToSession(session);
     }
 
     @OnClose
     public void onClose(Session session) {
         sessions.remove(session);
-        System.out.println("🔌 Client unsubscribed from online list");
+        System.out.println("🔌 Client unsubscribed from online list (remaining: " + sessions.size() + ")");
     }
 
     @OnError
@@ -39,11 +41,30 @@ public class OnlineListEndpoint {
         System.err.println("❌ WebSocket error: " + error.getMessage());
     }
 
+    @OnMessage
+    public void onMessage(String message, Session session) {
+        // Handle ping/refresh request from client
+        System.out.println("📨 Online list message: " + message);
+        // Any message triggers a refresh for that client
+        sendListToSession(session);
+    }
+
+    private static void sendListToSession(Session session) {
+        try {
+            if (session.isOpen()) {
+                String json = buildOnlineListJson();
+                session.getBasicRemote().sendText(json);
+            }
+        } catch (IOException e) {
+            System.err.println("Error sending list to session: " + e.getMessage());
+        }
+    }
+
     private static String buildOnlineListJson() {
         try {
             // Get all online peers from registry
             Map<Long, PeerInfo> peers = PeerRegistry.get().getAllPeers();
-            
+
             // Build JSON array: [{"userId":1,"ip":"127.0.0.1","port":9001}]
             List<Map<String, Object>> peerList = new ArrayList<>();
             for (PeerInfo peer : peers.values()) {
@@ -54,11 +75,11 @@ public class OnlineListEndpoint {
                 p.put("lastSeen", peer.lastSeen);
                 peerList.add(p);
             }
-            
+
             Map<String, Object> result = new HashMap<>();
             result.put("type", "ONLINE_LIST");
             result.put("peers", peerList);
-            
+
             return mapper.writeValueAsString(result);
         } catch (Exception e) {
             System.err.println("Error building JSON: " + e.getMessage());

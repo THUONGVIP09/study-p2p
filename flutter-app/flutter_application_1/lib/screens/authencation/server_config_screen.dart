@@ -1,7 +1,9 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../services/network_helper.dart';
+import '../../services/toxic_filter_service.dart';
 import '../../config/app_config.dart';
 import 'get_started_screen.dart';
 
@@ -19,8 +21,10 @@ class ServerConfigScreen extends StatefulWidget {
 
 class _ServerConfigScreenState extends State<ServerConfigScreen> {
   final TextEditingController _serverIpController = TextEditingController();
+  final TextEditingController _aiServerIpController = TextEditingController();
   String _myIp = 'Detecting...';
   bool _isLoading = true;
+  bool _aiServerConnected = false;
 
   @override
   void initState() {
@@ -34,12 +38,17 @@ class _ServerConfigScreenState extends State<ServerConfigScreen> {
     try {
       final myIp = await NetworkHelper.getLocalIpAddress();
       final currentServerIp = AppConfig.currentServerIp;
+      final aiServerIp = await ToxicFilterService.getAiServerIp();
 
       setState(() {
         _myIp = myIp;
         _serverIpController.text = currentServerIp;
+        _aiServerIpController.text = aiServerIp;
         _isLoading = false;
       });
+      
+      // Check AI server connection
+      _checkAiServerConnection();
     } catch (e) {
       setState(() {
         _myIp = 'Error: $e';
@@ -47,9 +56,17 @@ class _ServerConfigScreenState extends State<ServerConfigScreen> {
       });
     }
   }
+  
+  Future<void> _checkAiServerConnection() async {
+    final connected = await ToxicFilterService.healthCheck();
+    if (mounted) {
+      setState(() => _aiServerConnected = connected);
+    }
+  }
 
   Future<void> _proceedToLogin() async {
     final serverIp = _serverIpController.text.trim();
+    final aiServerIp = _aiServerIpController.text.trim();
 
     if (serverIp.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -67,6 +84,12 @@ class _ServerConfigScreenState extends State<ServerConfigScreen> {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('server_ip', serverIp);
       print('💾 Saved server IP to SharedPreferences: $serverIp');
+      
+      // Save AI server IP
+      if (aiServerIp.isNotEmpty) {
+        await ToxicFilterService.setAiServerIp(aiServerIp);
+        print('💾 Saved AI server IP: $aiServerIp');
+      }
     } catch (e) {
       print('❌ Error saving server IP: $e');
     }
@@ -169,8 +192,11 @@ class _ServerConfigScreenState extends State<ServerConfigScreen> {
                             ],
                           ),
                           const Divider(),
-                          _buildInfoRow('Your IP Address', _myIp,
-                              canCopy: true),
+                          _buildInfoRow(
+                            'Your IP Address', 
+                            kIsWeb ? 'Not Available (Web)' : _myIp,
+                            canCopy: !kIsWeb && _myIp != 'Detecting...' && !_myIp.startsWith('Error'),
+                          ),
                           _buildInfoRow(
                             'Current Server IP',
                             AppConfig.currentServerIp,
@@ -222,16 +248,158 @@ class _ServerConfigScreenState extends State<ServerConfigScreen> {
                           foregroundColor: Colors.green.shade900,
                         ),
                       ),
+                      // Disable "My IP" button on web since IP detection doesn't work
                       ElevatedButton.icon(
-                        onPressed: _useMyIp,
+                        onPressed: kIsWeb ? null : _useMyIp,
                         icon: const Icon(Icons.wifi, size: 18),
-                        label: const Text('My IP'),
+                        label: Text(kIsWeb ? 'My IP (N/A on Web)' : 'My IP'),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.orange.shade100,
-                          foregroundColor: Colors.orange.shade900,
+                          backgroundColor: kIsWeb 
+                              ? Colors.grey.shade200 
+                              : Colors.orange.shade100,
+                          foregroundColor: kIsWeb 
+                              ? Colors.grey.shade500 
+                              : Colors.orange.shade900,
                         ),
                       ),
                     ],
+                  ),
+
+                  const SizedBox(height: 32),
+                  
+                  // AI Filter Server Section
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.purple.shade50,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.purple.shade200),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(Icons.smart_toy, color: Colors.purple.shade700),
+                            const SizedBox(width: 8),
+                            Text(
+                              'AI Filter Server',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.purple.shade900,
+                              ),
+                            ),
+                            const Spacer(),
+                            // Connection status indicator
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: _aiServerConnected 
+                                    ? Colors.green.shade100 
+                                    : Colors.red.shade100,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    _aiServerConnected 
+                                        ? Icons.check_circle 
+                                        : Icons.error_outline,
+                                    size: 14,
+                                    color: _aiServerConnected 
+                                        ? Colors.green.shade700 
+                                        : Colors.red.shade700,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    _aiServerConnected ? 'Connected' : 'Offline',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      color: _aiServerConnected 
+                                          ? Colors.green.shade700 
+                                          : Colors.red.shade700,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Machine Learning server để lọc nội dung thô tục (port 5000)',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: Colors.purple.shade600,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        TextField(
+                          controller: _aiServerIpController,
+                          decoration: InputDecoration(
+                            hintText: 'localhost hoặc 192.168.1.x',
+                            prefixIcon: const Icon(Icons.psychology),
+                            border: const OutlineInputBorder(),
+                            filled: true,
+                            fillColor: Colors.white,
+                            suffixIcon: IconButton(
+                              icon: const Icon(Icons.refresh),
+                              tooltip: 'Test connection',
+                              onPressed: () async {
+                                await ToxicFilterService.setAiServerIp(
+                                    _aiServerIpController.text.trim());
+                                _checkAiServerConnection();
+                                if (mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(_aiServerConnected 
+                                          ? '✅ AI Server connected!' 
+                                          : '❌ Cannot connect to AI Server'),
+                                    ),
+                                  );
+                                }
+                              },
+                            ),
+                          ),
+                          keyboardType: TextInputType.text,
+                        ),
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            OutlinedButton.icon(
+                              onPressed: () {
+                                setState(() {
+                                  _aiServerIpController.text = 'localhost';
+                                });
+                              },
+                              icon: const Icon(Icons.computer, size: 16),
+                              label: const Text('Localhost'),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: Colors.purple,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            OutlinedButton.icon(
+                              onPressed: () {
+                                // Use same IP as main server
+                                setState(() {
+                                  _aiServerIpController.text = 
+                                      _serverIpController.text;
+                                });
+                              },
+                              icon: const Icon(Icons.sync, size: 16),
+                              label: const Text('Same as Server'),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: Colors.purple,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
 
                   const SizedBox(height: 24),
@@ -337,6 +505,7 @@ class _ServerConfigScreenState extends State<ServerConfigScreen> {
   @override
   void dispose() {
     _serverIpController.dispose();
+    _aiServerIpController.dispose();
     super.dispose();
   }
 }

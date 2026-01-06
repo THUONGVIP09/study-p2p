@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:web_socket_channel/io.dart';
+import 'package:web_socket_channel/web_socket_channel.dart';
 import 'dart:convert';
+import 'dart:async';
 import '../../services/friends_service.dart';
 import '../chat/hybrid_chat_screen.dart';
+import '../../config/app_config.dart';
 
 class FriendsTab extends StatefulWidget {
   const FriendsTab({super.key});
@@ -20,23 +22,101 @@ class _FriendsTabState extends State<FriendsTab> {
 
   // Online status tracking
   final Map<int, bool> _onlineStatus = {};
-  IOWebSocketChannel? _onlineListChannel;
+  WebSocketChannel? _onlineListChannel;
+  StreamSubscription? _onlineListSub;
+  
+  // Chat relay connection to register self as online
+  WebSocketChannel? _chatRelayChannel;
+  int? _currentUserId;
+  Timer? _heartbeatTimer;
+  Timer? _refreshOnlineListTimer;
   @override
   void initState() {
     super.initState();
     _loadFriends();
+    _initializeOnlineStatus();
+  }
+
+  /// Initialize online status: first register self, then subscribe to updates
+  Future<void> _initializeOnlineStatus() async {
+    // First, register ourselves as online
+    await _registerAsOnline();
+    
+    // Small delay to ensure server has processed our registration
+    await Future.delayed(const Duration(milliseconds: 500));
+    
+    // Then subscribe to online list updates
     _subscribeToOnlineList();
+    
+    // Set up periodic refresh to handle any missed updates
+    // This reconnects every 30 seconds to ensure fresh data
+    _refreshOnlineListTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+      if (mounted) {
+        _reconnectOnlineList();
+      }
+    });
+  }
+
+  /// Register current user as online by connecting to chat-relay
+  Future<void> _registerAsOnline() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      _currentUserId = prefs.getInt('userId');
+      
+      if (_currentUserId == null) {
+        debugPrint('⚠️ No userId found, cannot register as online');
+        return;
+      }
+
+      // Connect to chat-relay to register as online
+      final relayUrl = AppConfig.chatRelayUrl(_currentUserId!);
+      debugPrint('🔌 Connecting to chat-relay to register as online: $relayUrl');
+      
+      _chatRelayChannel = WebSocketChannel.connect(Uri.parse(relayUrl));
+      
+      // Listen for any incoming messages (in case someone sends a message)
+      _chatRelayChannel!.stream.listen(
+        (data) {
+          debugPrint('📨 [FriendsTab] Received relay message: $data');
+        },
+        onError: (error) {
+          debugPrint('❌ Chat relay error: $error');
+        },
+        onDone: () {
+          debugPrint('🔌 Chat relay disconnected');
+        },
+      );
+
+      // Start heartbeat to stay online
+      _heartbeatTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+        if (_chatRelayChannel != null) {
+          try {
+            _chatRelayChannel!.sink.add(jsonEncode({
+              'type': 'heartbeat',
+              'from': _currentUserId,
+            }));
+          } catch (e) {
+            debugPrint('❌ Heartbeat failed: $e');
+          }
+        }
+      });
+
+      debugPrint('✅ Registered as online (userId: $_currentUserId)');
+    } catch (e) {
+      debugPrint('❌ Failed to register as online: $e');
+    }
   }
 
   void _subscribeToOnlineList() {
     try {
-      // Connect to online list broadcast WebSocket
-      _onlineListChannel = IOWebSocketChannel.connect(
-        Uri.parse('ws://127.0.0.1:8082/chat-online-list'),
+      // Connect to online list broadcast WebSocket using AppConfig
+      // Use WebSocketChannel.connect for cross-platform support (web + native)
+      _onlineListChannel = WebSocketChannel.connect(
+        Uri.parse(AppConfig.onlineListUrl),
       );
 
       // Listen for online peer updates
-      _onlineListChannel!.stream.listen((data) {
+      _onlineListSub = _onlineListChannel!.stream.listen((data) {
         try {
           final msg = jsonDecode(data);
           if (msg['type'] == 'ONLINE_LIST') {
@@ -54,6 +134,7 @@ class _FriendsTabState extends State<FriendsTab> {
                   }
                 }
               });
+              debugPrint('📡 Online status updated: ${_onlineStatus.keys.length} users online');
             }
           }
         } catch (e) {
@@ -61,10 +142,32 @@ class _FriendsTabState extends State<FriendsTab> {
         }
       }, onError: (error) {
         debugPrint('Online list WebSocket error: $error');
+        // Try to reconnect after 5 seconds
+        Future.delayed(const Duration(seconds: 5), () {
+          if (mounted) {
+            _subscribeToOnlineList();
+          }
+        });
+      }, onDone: () {
+        debugPrint('Online list WebSocket closed');
+        // Try to reconnect after 5 seconds
+        Future.delayed(const Duration(seconds: 5), () {
+          if (mounted) {
+            _subscribeToOnlineList();
+          }
+        });
       });
     } catch (e) {
       debugPrint('Failed to subscribe to online list: $e');
     }
+  }
+
+  /// Reconnect to online list WebSocket to get fresh data
+  void _reconnectOnlineList() {
+    debugPrint('🔄 Reconnecting to online list for fresh data...');
+    _onlineListSub?.cancel();
+    _onlineListChannel?.sink.close();
+    _subscribeToOnlineList();
   }
 
   Future<void> _loadFriends({String query = ''}) async {
@@ -365,6 +468,10 @@ class _FriendsTabState extends State<FriendsTab> {
 
   @override
   void dispose() {
+    _heartbeatTimer?.cancel();
+    _refreshOnlineListTimer?.cancel();
+    _onlineListSub?.cancel();
+    _chatRelayChannel?.sink.close();
     _onlineListChannel?.sink.close();
     searchCtrl.dispose();
     super.dispose();

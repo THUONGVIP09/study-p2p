@@ -383,23 +383,27 @@ class _RoomsPageState extends State<RoomsPage> {
       // Kiểm tra visibility và xác thực qua API
       String? passcode;
       if (room.visibility == 'PRIVATE') {
-        passcode = await _askPasscode();
-        if (passcode == null || passcode.isEmpty) {
-          return; // Huỷ
+        // Chủ phòng không cần nhập passcode
+        if (room.createdBy != _userId) {
+          passcode = await _askPasscode();
+          if (passcode == null || passcode.isEmpty) {
+            return; // Huỷ
+          }
+          // Xác thực passcode với backend
+          try {
+            await ApiService.joinRoomByCode(
+              roomCode: room.roomCode,
+              passcode: passcode,
+              userId: _userId,
+            );
+          } catch (e) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Passcode không đúng: $e')),
+            );
+            return;
+          }
         }
-        // Xác thực passcode với backend
-        try {
-          await ApiService.joinRoomByCode(
-            roomCode: room.roomCode,
-            passcode: passcode,
-            userId: _userId,
-          );
-        } catch (e) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Passcode không đúng: $e')),
-          );
-          return;
-        }
+        // Chủ phòng tự động được phép vào
       } else if (room.visibility == 'PROTECTED') {
         // Kiểm tra nếu là chủ phòng thì skip approval flow
         if (room.createdBy != _userId) {

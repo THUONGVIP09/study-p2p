@@ -8,10 +8,18 @@ public class PeerRegistry {
     private final Map<Long, PeerInfo> peers = new ConcurrentHashMap<>();
     private static final long EXPIRY_MS = 60_000; // 60s
 
-    public static PeerRegistry get() { return INSTANCE; }
+    public static PeerRegistry get() {
+        return INSTANCE;
+    }
 
     public void register(long userId, String ip, int port) {
         peers.put(userId, new PeerInfo(userId, ip, port));
+        System.out.println("📝 [Registry] User " + userId + " registered (ip=" + ip + ", port=" + port + ")");
+    }
+
+    public void unregister(long userId) {
+        peers.remove(userId);
+        System.out.println("🗑️ [Registry] User " + userId + " unregistered");
     }
 
     public void heartbeat(long userId) {
@@ -23,7 +31,8 @@ public class PeerRegistry {
 
     public PeerInfo getPeer(long userId) {
         PeerInfo p = peers.get(userId);
-        if (p == null) return null;
+        if (p == null)
+            return null;
         if (System.currentTimeMillis() - p.lastSeen > EXPIRY_MS) {
             peers.remove(userId);
             return null;

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'dart:async';
 import '../services/network_helper.dart';
+import '../config/app_config.dart';
 
 /// Widget hiển thị IP của máy ở góc dưới màn hình
 /// Giúp user biết IP của server để share cho máy khác
@@ -13,19 +15,34 @@ class ServerIpIndicator extends StatefulWidget {
 
 class _ServerIpIndicatorState extends State<ServerIpIndicator> {
   String _myIp = 'Detecting...';
+  String _serverIp = '127.0.0.1';
   bool _isExpanded = false;
+  Timer? _refreshTimer;
 
   @override
   void initState() {
     super.initState();
     _loadIp();
+    // Refresh every 5 seconds to get updated server IP
+    _refreshTimer = Timer.periodic(const Duration(seconds: 5), (_) {
+      _refreshServerIp();
+    });
+  }
+
+  @override
+  void dispose() {
+    _refreshTimer?.cancel();
+    super.dispose();
   }
 
   Future<void> _loadIp() async {
     try {
       final ip = await NetworkHelper.getLocalIpAddress();
       if (mounted) {
-        setState(() => _myIp = ip);
+        setState(() {
+          _myIp = ip;
+          _serverIp = AppConfig.currentServerIp;
+        });
       }
     } catch (e) {
       if (mounted) {
@@ -34,11 +51,19 @@ class _ServerIpIndicatorState extends State<ServerIpIndicator> {
     }
   }
 
-  void _copyToClipboard() {
-    Clipboard.setData(ClipboardData(text: _myIp));
+  void _refreshServerIp() {
+    if (mounted) {
+      setState(() {
+        _serverIp = AppConfig.currentServerIp;
+      });
+    }
+  }
+
+  void _copyToClipboard(String ip) {
+    Clipboard.setData(ClipboardData(text: ip));
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('📋 Copied IP: $_myIp'),
+        content: Text('📋 Copied IP: $ip'),
         duration: const Duration(seconds: 2),
       ),
     );
@@ -100,7 +125,7 @@ class _ServerIpIndicatorState extends State<ServerIpIndicator> {
             const Icon(Icons.computer, color: Colors.white, size: 16),
             const SizedBox(width: 8),
             const Text(
-              'My Server IP',
+              'Network Info',
               style: TextStyle(
                 color: Colors.white,
                 fontSize: 12,
@@ -110,6 +135,7 @@ class _ServerIpIndicatorState extends State<ServerIpIndicator> {
           ],
         ),
         const SizedBox(height: 8),
+        // My Local IP
         Container(
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
@@ -119,6 +145,13 @@ class _ServerIpIndicatorState extends State<ServerIpIndicator> {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
+              const Text(
+                'My IP: ',
+                style: TextStyle(
+                  color: Colors.white70,
+                  fontSize: 12,
+                ),
+              ),
               Text(
                 _myIp,
                 style: const TextStyle(
@@ -130,7 +163,53 @@ class _ServerIpIndicatorState extends State<ServerIpIndicator> {
               ),
               const SizedBox(width: 8),
               InkWell(
-                onTap: _copyToClipboard,
+                onTap: () => _copyToClipboard(_myIp),
+                child: Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.3),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: const Icon(
+                    Icons.copy,
+                    color: Colors.white,
+                    size: 14,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 6),
+        // Current Server IP
+        Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: Colors.green.withOpacity(0.3),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'Server: ',
+                style: TextStyle(
+                  color: Colors.white70,
+                  fontSize: 12,
+                ),
+              ),
+              Text(
+                _serverIp,
+                style: const TextStyle(
+                  color: Colors.lightGreenAccent,
+                  fontSize: 14,
+                  fontFamily: 'monospace',
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(width: 8),
+              InkWell(
+                onTap: () => _copyToClipboard(_serverIp),
                 child: Container(
                   padding: const EdgeInsets.all(4),
                   decoration: BoxDecoration(

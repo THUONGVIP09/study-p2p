@@ -26,8 +26,6 @@ class _SignInScreenState extends State<SignInScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
     return Scaffold(
       resizeToAvoidBottomInset: true,
       body: Container(
@@ -84,9 +82,6 @@ class _SignInScreenState extends State<SignInScreen> {
                             ),
                             const SizedBox(height: 20),
                             
-                            const SizedBox(height: 8),
-                          
-                            const SizedBox(height: 18),
                             _RoundedField(
                               hint: 'Email...',
                               keyboardType: TextInputType.emailAddress,

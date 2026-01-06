@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter/foundation.dart'; // for kIsWeb
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart'; // for SystemChrome
 import 'package:flutter_webrtc/flutter_webrtc.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 import 'package:network_info_plus/network_info_plus.dart';
@@ -13,6 +14,7 @@ import 'services/api_service.dart';
 import 'services/p2p_tcp_server.dart';
 import 'services/webrtc_p2p_chat.dart';
 import 'services/local_message_storage.dart';
+import 'services/toxic_filter_service.dart';
 
 class P2PCallPage extends StatefulWidget {
   final Room room;
@@ -77,10 +79,19 @@ class _P2PCallPageState extends State<P2PCallPage> {
   final TextEditingController _chatController = TextEditingController();
   final ScrollController _chatScrollController = ScrollController();
   String? _awaitEchoText; // suppress duplicate echo of our sent message
+  // AI Filter state - controlled by room owner
+  bool _aiFilterConnected = false; // AI server connection status
+  bool _isCheckingToxic = false; // Loading state when checking
   // View state
   String _viewMode = 'grid'; // grid | list (placeholder)
   bool _isFullscreen = false; // placeholder
   String? _currentScreenSharerUid; // uid của người đang chia sẻ màn hình
+  
+  /// Check if current user is room owner
+  bool get _isRoomOwner => widget.room.isOwner(widget.currentUserId);
+  
+  /// Get AI Filter enabled state from room
+  bool get _aiFilterEnabled => widget.room.aiFilterEnabled;
 
   @override
   void initState() {
@@ -99,7 +110,7 @@ class _P2PCallPageState extends State<P2PCallPage> {
   Widget _buildChatPanel() {
     return Column(
       children: [
-        // Chat Summary Button with Back Button
+        // Chat Header with Back Button and AI Filter
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           decoration: BoxDecoration(
@@ -124,6 +135,66 @@ class _P2PCallPageState extends State<P2PCallPage> {
                   style: TextStyle(
                     fontWeight: FontWeight.w600,
                     color: Colors.purple.shade700,
+                  ),
+                ),
+              ),
+              // 🤖 AI Filter Toggle - Only owner can toggle
+              Tooltip(
+                message: _isRoomOwner
+                    ? (_aiFilterEnabled 
+                        ? 'AI Filter đang BẬT - Nhấn để tắt'
+                        : 'AI Filter đang TẮT - Nhấn để bật')
+                    : (_aiFilterEnabled 
+                        ? 'AI Filter đang BẬT (do chủ phòng quản lý)'
+                        : 'AI Filter đang TẮT (do chủ phòng quản lý)'),
+                child: InkWell(
+                  onTap: _isRoomOwner ? _toggleAiFilter : _showNotOwnerMessage,
+                  borderRadius: BorderRadius.circular(8),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: _aiFilterEnabled 
+                          ? Colors.green.shade100 
+                          : Colors.grey.shade200,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: _aiFilterEnabled 
+                            ? Colors.green.shade400 
+                            : Colors.grey.shade400,
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.smart_toy,
+                          size: 16,
+                          color: _aiFilterEnabled 
+                              ? Colors.green.shade700 
+                              : Colors.grey.shade600,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          'AI',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: _aiFilterEnabled 
+                                ? Colors.green.shade700 
+                                : Colors.grey.shade600,
+                          ),
+                        ),
+                        // Show lock icon for non-owners
+                        if (!_isRoomOwner) ...[
+                          const SizedBox(width: 2),
+                          Icon(
+                            Icons.lock_outline,
+                            size: 12,
+                            color: Colors.grey.shade500,
+                          ),
+                        ],
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -191,21 +262,38 @@ class _P2PCallPageState extends State<P2PCallPage> {
                 child: TextField(
                   controller: _chatController,
                   style: const TextStyle(color: Colors.black),
-                  decoration: const InputDecoration(
-                    hintText: 'Gửi tin nhắn...',
-                    hintStyle: TextStyle(color: Colors.black54),
+                  enabled: !_isCheckingToxic,
+                  decoration: InputDecoration(
+                    hintText: _isCheckingToxic 
+                        ? 'Đang kiểm tra...' 
+                        : 'Gửi tin nhắn...',
+                    hintStyle: const TextStyle(color: Colors.black54),
                     filled: true,
                     fillColor: Colors.white,
-                    border: OutlineInputBorder(),
+                    border: const OutlineInputBorder(),
+                    prefixIcon: _aiFilterEnabled 
+                        ? Icon(
+                            Icons.shield_outlined,
+                            color: Colors.green.shade400,
+                            size: 20,
+                          )
+                        : null,
                   ),
+                  onSubmitted: (_) => _onSendChat(),
                 ),
               ),
               const SizedBox(width: 8),
-              IconButton(
-                icon: const Icon(Icons.send),
-                color: Colors.black87,
-                onPressed: _onSendChat,
-              ),
+              _isCheckingToxic
+                  ? const SizedBox(
+                      width: 24,
+                      height: 24,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : IconButton(
+                      icon: const Icon(Icons.send),
+                      color: Colors.purple,
+                      onPressed: _onSendChat,
+                    ),
             ],
           ),
         ),
@@ -281,9 +369,36 @@ class _P2PCallPageState extends State<P2PCallPage> {
     }
   }
 
-  void _onSendChat() {
+  void _onSendChat() async {
     final text = _chatController.text.trim();
-    if (text.isEmpty) return;
+    if (text.isEmpty || _isCheckingToxic) return;
+    
+    // 🤖 AI Filter: Kiểm tra nội dung thô tục
+    if (_aiFilterEnabled) {
+      setState(() => _isCheckingToxic = true);
+      
+      try {
+        final result = await ToxicFilterService.checkMessage(text);
+        
+        if (result.isToxic) {
+          // Tin nhắn bị phát hiện là thô tục
+          setState(() => _isCheckingToxic = false);
+          _showToxicWarning(text, result.confidence);
+          return; // Không gửi tin nhắn
+        }
+        
+        // Update connection status
+        if (!result.hasError && !_aiFilterConnected) {
+          setState(() => _aiFilterConnected = true);
+        }
+      } catch (e) {
+        debugPrint('⚠️ AI Filter error: $e');
+        // Fail-open: nếu không kết nối được AI server, vẫn cho gửi
+      }
+      
+      setState(() => _isCheckingToxic = false);
+    }
+    
     _chatController.clear();
 
     final timestamp = DateTime.now();
@@ -317,6 +432,137 @@ class _P2PCallPageState extends State<P2PCallPage> {
     // Send via P2P to all peers in room
     _broadcastToPeersP2P(
         text, widget.currentUserId, widget.displayName ?? 'You', timestamp);
+  }
+  
+  /// Hiển thị cảnh báo khi tin nhắn bị phát hiện là thô tục
+  void _showToxicWarning(String text, double confidence) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        icon: const Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 48),
+        title: const Text('Nội dung không phù hợp'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Tin nhắn của bạn có thể chứa nội dung không phù hợp và đã bị chặn.',
+              style: TextStyle(fontSize: 14),
+            ),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.red.shade50,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.red.shade200),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.smart_toy, color: Colors.red.shade400, size: 20),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'AI Filter: ${(confidence * 100).toStringAsFixed(0)}% tin rằng đây là nội dung thô tục',
+                      style: TextStyle(fontSize: 12, color: Colors.red.shade700),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Vui lòng chỉnh sửa tin nhắn và gửi lại.',
+              style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              // Đưa text lại vào ô input để user sửa
+              _chatController.text = text;
+            },
+            child: const Text('Chỉnh sửa'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Đã hiểu'),
+          ),
+        ],
+      ),
+    );
+  }
+  
+  /// Toggle AI Filter - Only room owner can call this
+  void _toggleAiFilter() {
+    if (!_isRoomOwner) return;
+    
+    setState(() {
+      widget.room.aiFilterEnabled = !widget.room.aiFilterEnabled;
+    });
+    
+    // Broadcast to all peers about filter state change
+    _broadcastFilterState();
+    
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            Icon(
+              _aiFilterEnabled ? Icons.shield : Icons.shield_outlined,
+              color: Colors.white,
+            ),
+            const SizedBox(width: 8),
+            Text(_aiFilterEnabled 
+                ? '🤖 AI Filter đã BẬT cho phòng này' 
+                : '⚠️ AI Filter đã TẮT cho phòng này'),
+          ],
+        ),
+        backgroundColor: _aiFilterEnabled ? Colors.green : Colors.orange,
+        duration: const Duration(seconds: 2),
+      ),
+    );
+  }
+  
+  /// Show message when non-owner tries to toggle
+  void _showNotOwnerMessage() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.lock, color: Colors.white),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                'Chỉ chủ phòng mới có quyền ${_aiFilterEnabled ? 'tắt' : 'bật'} AI Filter',
+              ),
+            ),
+          ],
+        ),
+        backgroundColor: Colors.blueGrey,
+        duration: const Duration(seconds: 2),
+      ),
+    );
+  }
+  
+  /// Broadcast AI Filter state to all peers
+  void _broadcastFilterState() {
+    final message = {
+      'type': 'ai_filter_state',
+      'enabled': widget.room.aiFilterEnabled,
+      'roomCode': widget.room.roomCode,
+      'changedBy': widget.currentUserId,
+    };
+    
+    // Broadcast via P2P
+    if (kIsWeb) {
+      _webrtcP2PChat?.broadcast(message);
+    } else {
+      final peerIps = _roomPeers.values.map((p) => p['ip'] as String).toList();
+      _p2pServer?.broadcastToPeers(peerIps, message);
+    }
   }
 
   Future<void> _broadcastToPeersP2P(
@@ -424,6 +670,26 @@ class _P2PCallPageState extends State<P2PCallPage> {
 
       _p2pServer = P2PTcpServer();
       _p2pServer!.onMessageReceived = (msg) {
+        // Handle AI Filter state change from owner
+        if (msg['type'] == 'ai_filter_state') {
+          final enabled = msg['enabled'] as bool? ?? true;
+          final changedBy = msg['changedBy'] as int?;
+          if (changedBy != widget.currentUserId) {
+            setState(() {
+              widget.room.aiFilterEnabled = enabled;
+            });
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(enabled 
+                    ? '🤖 Chủ phòng đã BẬT AI Filter' 
+                    : '⚠️ Chủ phòng đã TẮT AI Filter'),
+                duration: const Duration(seconds: 2),
+              ),
+            );
+          }
+          return;
+        }
+        
         // Nhận tin nhắn từ peer khác
         if (msg['type'] == 'chat') {
           final senderId = msg['senderId'] as int?;
@@ -504,6 +770,26 @@ class _P2PCallPageState extends State<P2PCallPage> {
         }
       },
       onMessageReceived: (peerId, message) {
+        // Handle AI Filter state change from owner
+        if (message['type'] == 'ai_filter_state') {
+          final enabled = message['enabled'] as bool? ?? true;
+          final changedBy = message['changedBy'] as int?;
+          if (changedBy != widget.currentUserId) {
+            setState(() {
+              widget.room.aiFilterEnabled = enabled;
+            });
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(enabled 
+                    ? '🤖 Chủ phòng đã BẬT AI Filter' 
+                    : '⚠️ Chủ phòng đã TẮT AI Filter'),
+                duration: const Duration(seconds: 2),
+              ),
+            );
+          }
+          return;
+        }
+        
         // Nếu là message chia sẻ màn hình thì cập nhật UI, không ảnh hưởng chat
         if (message['type'] == 'screen_share') {
           final sharerUid = message['uid'] as String?;
@@ -1399,11 +1685,17 @@ class _P2PCallPageState extends State<P2PCallPage> {
     _localRenderer.srcObject = null;
     await _localRenderer.dispose();
 
+    // Exit fullscreen mode before navigating back
+    _exitFullscreenMode();
+
     if (mounted) Navigator.pop(context);
   }
 
   @override
   void dispose() {
+    // Ensure we exit fullscreen mode when disposing
+    _exitFullscreenMode();
+
     _ws?.sink.close();
 
     for (final peer in _peers.values) {
@@ -1426,83 +1718,165 @@ class _P2PCallPageState extends State<P2PCallPage> {
 
     return Scaffold(
       backgroundColor: const Color(0xFFFCEBFF),
-      appBar: AppBar(
-        title: Text('P2P Mesh: ${widget.room.name} ($totalParticipants)'),
-        backgroundColor: Colors.purple[100],
-      ),
-      body: Row(
-        children: [
-          // Left taskbar
-          Container(
-            width: 64,
-            color: Colors.purple[50],
-            child: Column(
-              children: [
-                const SizedBox(height: 12),
-                IconButton(
-                  tooltip: 'Participants',
-                  icon: Icon(
-                    Icons.people_alt,
-                    color: _activePanel == 'participants'
-                        ? Colors.purple
-                        : Colors.black54,
-                  ),
-                  onPressed: () {
-                    setState(() => _activePanel = _activePanel == 'participants'
-                        ? 'none'
-                        : 'participants');
-                  },
-                ),
-                IconButton(
-                  tooltip: 'Chat',
-                  icon: Icon(
-                    Icons.chat_bubble_outline,
-                    color:
-                        _activePanel == 'chat' ? Colors.purple : Colors.black54,
-                  ),
-                  onPressed: () {
-                    setState(() => _activePanel == 'chat'
-                        ? _activePanel = 'none'
-                        : _activePanel = 'chat');
-                  },
-                ),
-                IconButton(
-                  tooltip: 'Settings',
-                  icon: Icon(
-                    Icons.settings,
-                    color: _activePanel == 'settings'
-                        ? Colors.purple
-                        : Colors.black54,
-                  ),
-                  onPressed: () {
-                    setState(() => _activePanel =
-                        _activePanel == 'settings' ? 'none' : 'settings');
-                  },
-                ),
-                const Spacer(),
-                IconButton(
-                  tooltip: 'Leave',
-                  icon: const Icon(Icons.call_end, color: Colors.red),
-                  onPressed: _leave,
-                ),
-                const SizedBox(height: 12),
-              ],
+      // Hide AppBar in fullscreen mode
+      appBar: _isFullscreen
+          ? null
+          : AppBar(
+              title: Text('P2P Mesh: ${widget.room.name} ($totalParticipants)'),
+              backgroundColor: Colors.purple[100],
             ),
-          ),
-          // Main content + right panel
-          Expanded(
-            child: Column(
-              children: [
-                // Video grid
-                Expanded(child: _buildVideoGrid()),
-                // Controls
+      body: Stack(
+        children: [
+          Row(
+            children: [
+              // Left taskbar - hide in fullscreen mode
+              if (!_isFullscreen)
                 Container(
-                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  width: 64,
+                  color: Colors.purple[50],
+                  child: Column(
+                    children: [
+                      const SizedBox(height: 12),
+                      IconButton(
+                        tooltip: 'Participants',
+                        icon: Icon(
+                          Icons.people_alt,
+                          color: _activePanel == 'participants'
+                              ? Colors.purple
+                              : Colors.black54,
+                        ),
+                        onPressed: () {
+                          setState(() =>
+                              _activePanel = _activePanel == 'participants'
+                                  ? 'none'
+                                  : 'participants');
+                        },
+                      ),
+                      IconButton(
+                        tooltip: 'Chat',
+                        icon: Icon(
+                          Icons.chat_bubble_outline,
+                          color: _activePanel == 'chat'
+                              ? Colors.purple
+                              : Colors.black54,
+                        ),
+                        onPressed: () {
+                          setState(() => _activePanel == 'chat'
+                              ? _activePanel = 'none'
+                              : _activePanel = 'chat');
+                        },
+                      ),
+                      IconButton(
+                        tooltip: 'Settings',
+                        icon: Icon(
+                          Icons.settings,
+                          color: _activePanel == 'settings'
+                              ? Colors.purple
+                              : Colors.black54,
+                        ),
+                        onPressed: () {
+                          setState(() => _activePanel =
+                              _activePanel == 'settings' ? 'none' : 'settings');
+                        },
+                      ),
+                      const Spacer(),
+                      IconButton(
+                        tooltip: 'Leave',
+                        icon: const Icon(Icons.call_end, color: Colors.red),
+                        onPressed: _leave,
+                      ),
+                      const SizedBox(height: 12),
+                    ],
+                  ),
+                ),
+              // Main content + right panel
+              Expanded(
+                child: Column(
+                  children: [
+                    // Video grid - use view mode
+                    Expanded(
+                      child: _viewMode == 'grid'
+                          ? _buildVideoGrid()
+                          : _buildListLayout(),
+                    ),
+                    // Controls - hide in fullscreen mode
+                    if (!_isFullscreen)
+                      Container(
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            IconButton(
+                              icon: Icon(micMuted ? Icons.mic_off : Icons.mic),
+                              onPressed: () {
+                                setState(() => micMuted = !micMuted);
+                                final enabled = !micMuted;
+                                _localStream?.getAudioTracks().forEach((t) {
+                                  t.enabled = enabled;
+                                });
+                              },
+                            ),
+                            IconButton(
+                              icon: Icon(camEnabled
+                                  ? Icons.videocam
+                                  : Icons.videocam_off),
+                              onPressed: () {
+                                setState(() => camEnabled = !camEnabled);
+                                final enabled = camEnabled;
+                                _localStream?.getVideoTracks().forEach((t) {
+                                  t.enabled = enabled;
+                                });
+                              },
+                            ),
+                            IconButton(
+                              icon: Icon(
+                                _isScreenSharing
+                                    ? Icons.stop_screen_share
+                                    : Icons.screen_share,
+                                color: _isScreenSharing ? Colors.green : null,
+                              ),
+                              onPressed: _toggleScreenSharing,
+                              tooltip: _isScreenSharing
+                                  ? 'Dừng chia sẻ màn hình'
+                                  : 'Chia sẻ màn hình',
+                            ),
+                          ],
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              // Right side panel - hide in fullscreen mode
+              if (!_isFullscreen)
+                Container(
+                  width: _activePanel == 'none' ? 0 : 280,
+                  color: Colors.white,
+                  child: _buildSidePanel(),
+                ),
+            ],
+          ),
+          // Fullscreen controls overlay - show mini controls in fullscreen
+          if (_isFullscreen)
+            Positioned(
+              bottom: 20,
+              left: 0,
+              right: 0,
+              child: Center(
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: Colors.black54,
+                    borderRadius: BorderRadius.circular(30),
+                  ),
                   child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
+                    mainAxisSize: MainAxisSize.min,
                     children: [
                       IconButton(
-                        icon: Icon(micMuted ? Icons.mic_off : Icons.mic),
+                        icon: Icon(
+                          micMuted ? Icons.mic_off : Icons.mic,
+                          color: Colors.white,
+                        ),
                         onPressed: () {
                           setState(() => micMuted = !micMuted);
                           final enabled = !micMuted;
@@ -1513,7 +1887,9 @@ class _P2PCallPageState extends State<P2PCallPage> {
                       ),
                       IconButton(
                         icon: Icon(
-                            camEnabled ? Icons.videocam : Icons.videocam_off),
+                          camEnabled ? Icons.videocam : Icons.videocam_off,
+                          color: Colors.white,
+                        ),
                         onPressed: () {
                           setState(() => camEnabled = !camEnabled);
                           final enabled = camEnabled;
@@ -1524,28 +1900,22 @@ class _P2PCallPageState extends State<P2PCallPage> {
                       ),
                       IconButton(
                         icon: Icon(
-                          _isScreenSharing
-                              ? Icons.stop_screen_share
-                              : Icons.screen_share,
-                          color: _isScreenSharing ? Colors.green : null,
+                          Icons.fullscreen_exit,
+                          color: Colors.white,
                         ),
-                        onPressed: _toggleScreenSharing,
-                        tooltip: _isScreenSharing
-                            ? 'Dừng chia sẻ màn hình'
-                            : 'Chia sẻ màn hình',
+                        onPressed: _toggleFullscreen,
+                        tooltip: 'Thoát toàn màn hình',
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.call_end, color: Colors.red),
+                        onPressed: _leave,
+                        tooltip: 'Rời phòng',
                       ),
                     ],
                   ),
                 ),
-              ],
+              ),
             ),
-          ),
-          // Right side panel
-          Container(
-            width: _activePanel == 'none' ? 0 : 280,
-            color: Colors.white,
-            child: _buildSidePanel(),
-          ),
         ],
       ),
     );
@@ -1660,6 +2030,11 @@ class _P2PCallPageState extends State<P2PCallPage> {
       }
     }
 
+    // View mode: grid or list
+    if (_viewMode == 'list') {
+      return _buildListLayout();
+    }
+    
     // Default: grid layout
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -2054,12 +2429,75 @@ class _P2PCallPageState extends State<P2PCallPage> {
           leading: const Icon(Icons.fullscreen),
           title: const Text('Toàn màn hình'),
           onTap: () {
-            setState(() {
-              _isFullscreen = !_isFullscreen;
-            });
+            _toggleFullscreen();
           },
           subtitle: Text(_isFullscreen ? 'Đang fullscreen' : 'Bình thường'),
         ),
+      ],
+    );
+  }
+
+  // Toggle fullscreen mode
+  void _toggleFullscreen() {
+    setState(() {
+      _isFullscreen = !_isFullscreen;
+    });
+
+    if (_isFullscreen) {
+      // Enter fullscreen - hide system UI
+      SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+    } else {
+      // Exit fullscreen - restore system UI
+      SystemChrome.setEnabledSystemUIMode(
+        SystemUiMode.manual,
+        overlays: SystemUiOverlay.values,
+      );
+    }
+  }
+
+  // Exit fullscreen when leaving the page
+  void _exitFullscreenMode() {
+    if (_isFullscreen) {
+      SystemChrome.setEnabledSystemUIMode(
+        SystemUiMode.manual,
+        overlays: SystemUiOverlay.values,
+      );
+    }
+  }
+
+  // List layout view mode
+  Widget _buildListLayout() {
+    final peersList = _peers.values.toList();
+    return ListView(
+      padding: const EdgeInsets.all(8),
+      children: [
+        // Local video - full width, smaller height
+        Container(
+          height: 200,
+          margin: const EdgeInsets.only(bottom: 8),
+          decoration: BoxDecoration(
+            border: Border.all(color: Colors.purple, width: 2),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: _buildLocalVideoTile(),
+          ),
+        ),
+        // Remote peers - full width list
+        for (final peer in peersList)
+          Container(
+            height: 200,
+            margin: const EdgeInsets.only(bottom: 8),
+            decoration: BoxDecoration(
+              border: Border.all(color: Colors.blueGrey.shade700, width: 2),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: _buildRemoteVideoTile(peer),
+            ),
+          ),
       ],
     );
   }

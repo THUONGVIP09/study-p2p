@@ -1,0 +1,30 @@
+{
+  "model_name": "naive_bayes",
+  "results": {
+    "naive_bayes": {
+      "accuracy": 0.8823529411764706,
+      "cv_mean": 0.8063414634146341,
+      "cv_std": 0.06035365730450595
+    },
+    "logistic_regression": {
+      "accuracy": 0.8627450980392157,
+      "cv_mean": 0.8160975609756097,
+      "cv_std": 0.06377314232756566
+    },
+    "svm": {
+      "accuracy": 0.8627450980392157,
+      "cv_mean": 0.8113414634146341,
+      "cv_std": 0.0626829268292683
+    },
+    "random_forest": {
+      "accuracy": 0.7647058823529411,
+      "cv_mean": 0.7264634146341462,
+      "cv_std": 0.06659876573825085
+    }
+  },
+  "labels": {
+    "0": "non-toxic",
+    "1": "toxic"
+  },
+  "description": "Toxic comment classifier for Vietnamese and English"
+}

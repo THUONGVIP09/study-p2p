@@ -15,8 +15,7 @@ class NetworkHelper {
 
       print('🔍 Available network interfaces:');
       for (var interface in interfaces) {
-        print(
-            '   ${interface.name}: ${interface.addresses.map((a) => a.address).join(", ")}');
+        print('   ${interface.name}: ${interface.addresses.map((a) => a.address).join(", ")}');
       }
 
       // Ưu tiên WiFi

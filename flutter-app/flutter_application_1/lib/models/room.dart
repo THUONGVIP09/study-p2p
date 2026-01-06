@@ -9,6 +9,7 @@ class Room {
   final int createdBy;
   final bool isActive;
   final DateTime? createdAt;
+  bool aiFilterEnabled; // AI Filter setting - controlled by room owner
 
   Room({
     required this.id,
@@ -21,6 +22,7 @@ class Room {
     required this.createdBy,
     required this.isActive,
     this.createdAt,
+    this.aiFilterEnabled = true, // Default: enabled
   });
 
   factory Room.fromJson(Map<String, dynamic> json) {
@@ -37,6 +39,10 @@ class Room {
       createdAt: json['createdAt'] != null
           ? DateTime.parse(json['createdAt'] as String)
           : null,
+      aiFilterEnabled: json['aiFilterEnabled'] as bool? ?? true,
     );
   }
+  
+  /// Check if user is the room owner
+  bool isOwner(int userId) => createdBy == userId;
 }
