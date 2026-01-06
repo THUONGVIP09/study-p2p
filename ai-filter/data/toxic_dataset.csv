@@ -1,253 +1,874 @@
 text,label
-"xin chào bạn",0
-"hôm nay trời đẹp quá",0
-"bạn có thể giúp tôi không",0
-"cảm ơn bạn rất nhiều",0
-"chào mừng đến với lớp học",0
-"bài tập này khó quá",0
-"tôi thích học toán",0
-"chúng ta cùng học nhé",0
-"good morning everyone",0
-"how are you today",0
-"thank you so much",0
-"nice to meet you",0
-"can you help me please",0
-"this is a great idea",0
-"let's study together",0
-"I love learning new things",0
-"đồ ngu",1
-"mày ngu vãi",1
-"đồ khốn nạn",1
-"thằng chó",1
-"con chó mày",1
-"đồ điên",1
-"ngu như bò",1
-"đồ rác rưởi",1
-"thằng ngốc",1
-"đồ đần độn",1
-"mày là đồ vô dụng",1
-"thằng ngu si",1
-"đồ khùng",1
-"mày bị điên à",1
-"cút đi",1
-"biến đi",1
-"đồ hèn",1
-"thằng hèn nhát",1
-"mày là thằng đần",1
-"tao ghét mày",1
-"đồ phản bội",1
-"mày chết đi",1
-"stupid idiot",1
-"you are dumb",1
-"go to hell",1
-"shut up fool",1
-"you suck",1
-"what a loser",1
-"you are trash",1
-"piece of garbage",1
-"moron",1
-"idiot",1
-"dumbass",1
-"you are worthless",1
-"pathetic loser",1
-"screw you",1
-"get lost",1
-"you disgust me",1
-"bạn học bài chưa",0
-"tôi không hiểu bài này",0
-"cho mình hỏi một chút",0
-"bạn giỏi quá",0
-"tuyệt vời",0
-"làm tốt lắm",0
-"cố gắng lên nhé",0
-"chúc bạn may mắn",0
-"great job",0
-"well done",0
-"keep it up",0
-"you are amazing",0
-"fantastic work",0
-"I believe in you",0
-"thằng điên khùng",1
-"đồ ngu xuẩn",1
-"mày bị khùng à",1
-"câm mồm đi",1
-"im miệng đi",1
-"đồ vô học",1
-"thằng mất dạy",1
-"đồ bất tài",1
-"mày làm cái gì vậy đồ ngu",1
-"tao chửi mày đó",1
-"đồ ăn hại",1
-"thằng phế vật",1
-"damn you",1
-"you are an idiot",1
-"bloody fool",1
-"stupid moron",1
-"get the hell out",1
-"you are useless",1
-"nobody likes you",1
-"you are nothing",1
-"bài này hay quá",0
-"mình thích cách giải này",0
-"thanks for helping",0
-"bạn thật tuyệt",0
-"respect bạn",0
-"admire you",0
-"cùng cố gắng nào",0
-"let's do this together",0
-"you rock",0
-"awesome job",0
-"mày là thằng ngu nhất",1
-"đồ đần độn vô dụng",1
-"cút ngay khỏi đây",1
-"mày không xứng đáng",1
-"đồ rẻ tiền",1
-"scum of the earth",1
-"you are disgusting",1
-"worst person ever",1
-"bạn ơi giúp mình với",0
-"cảm ơn nhiều lắm",0
-"bạn tốt bụng quá",0
-"mình rất vui",0
-"happy to help",0
-"glad to meet you",0
-"mày xấu xí",1
-"đồ quái vật",1
-"ugly freak",1
-"you look terrible",1
-"bạn xinh quá",0
-"you look great",0
-"looking good",0
-"tào lao",1
-"vớ vẩn",1
-"nonsense",1
-"bullshit",1
-"mày nói láo",1
-"liar",1
-"thằng dối trá",1
-"đồ lừa đảo",1
-"đồ xạo",1
-"bạn nói đúng rồi",0
-"you are right",0
-"totally agree",0
-"đồng ý với bạn",0
-"makes sense",0
-"thằng đầu đất",1
-"mày đần lắm",1
-"óc chó",1
-"não cá vàng",1
-"brainless",1
-"empty head",1
-"you have no brain",1
-"bạn thông minh quá",0
-"so smart",0
-"clever idea",0
-"brilliant",0
-"genius",0
-"đồ súc sinh",1
-"như con vật",1
-"animal",1
-"beast",1
-"creature",1
-"bạn là người tốt",0
-"kind person",0
-"you are kind",0
-"đồ chó đẻ",1
-"con hoang",1
-"bastard",1
-"son of a",1
-"bạn hiền lành quá",0
-"so gentle",0
-"đồ thất bại",1
-"loser mày",1
-"failure",1
-"you always fail",1
-"bạn sẽ thành công",0
-"you will succeed",0
-"believe in yourself",0
-"thằng rác",1
-"đồ bỏ đi",1
-"garbage person",1
-"waste of space",1
-"bạn có giá trị",0
-"you matter",0
-"you are important",0
-"ghê tởm",1
-"kinh tởm",1
-"disgusting",1
-"gross",1
-"eww",1
-"bạn dễ thương",0
-"so cute",0
-"adorable",0
-"tởm lợm",1
-"thối nát",1
-"rotten",1
-"corrupt",1
-"bạn trong sáng",0
-"pure heart",0
-"innocent",0
-"chết tiệt",1
-"đồ quỷ",1
-"damn it",1
-"hell no",1
-"bình tĩnh nhé",0
-"calm down",0
-"take it easy",0
-"relax",0
-"thằng hâm",1
-"điên à mày",1
-"crazy fool",1
-"lunatic",1
-"bạn bình thường mà",0
-"you are normal",0
-"nothing wrong with you",0
-"đồ lưu manh",1
-"thằng côn đồ",1
-"thug",1
-"criminal",1
-"bạn là người đàng hoàng",0
-"respectable person",0
-"gentleman",0
-"đồ ba trợn",1
-"thằng vô lại",1
-"scoundrel",1
-"villain",1
-"bạn đáng tin cậy",0
-"trustworthy",0
-"reliable",0
-"đồ phá hoại",1
-"thằng phá đám",1
-"destroyer",1
-"saboteur",1
-"bạn xây dựng",0
-"constructive",0
-"helpful",0
-"câm miệng mày lại",1
-"shut your mouth",1
-"zip it",1
-"bạn cứ nói đi",0
-"please continue",0
-"go ahead",0
-"đồ mắc dịch",1
-"đồ bệnh hoạn",1
-"sick person",1
-"diseased",1
-"bạn khỏe không",0
-"how are you feeling",0
-"take care",0
-"bây học bài đi",0
-"let's focus on studying",0
-"concentrate please",0
-"mày học dốt vãi",1
-"you suck at studying",1
-"terrible student",1
-"bạn học giỏi lắm",0
-"great student",0
-"excellent learner",0
-"mày không biết gì cả",1
-"you know nothing",1
-"ignorant fool",1
-"bạn biết nhiều quá",0
-"you know so much",0
-"knowledgeable",0
+hello,0
+hello everyone,0
+hello world,0
+hello there,0
+hello my friend,0
+hi,0
+hi there,0
+hi everyone,0
+hi guys,0
+hi all,0
+hey,0
+hey there,0
+hey guys,0
+hey everyone,0
+hey yo,0
+good morning,0
+good morning everyone,0
+good afternoon,0
+good afternoon everyone,0
+good evening,0
+good evening everyone,0
+good night,0
+good night everyone,0
+goodnight,0
+morning,0
+afternoon,0
+evening,0
+how are you,0
+how are you today,0
+how are you doing,0
+how is it going,0
+how have you been,0
+how is everything,0
+I am fine,0
+I am good,0
+I am doing well,0
+I am great,0
+I am okay,0
+doing fine,0
+doing well,0
+doing great,0
+pretty good,0
+not bad,0
+all good,0
+thank you,0
+thank you so much,0
+thanks,0
+thanks a lot,0
+thanks for helping,0
+thanks for your help,0
+thank you for helping,0
+much appreciated,0
+I appreciate it,0
+nice to meet you,0
+nice meeting you,0
+pleased to meet you,0
+glad to meet you,0
+can you help me,0
+can you help me please,0
+please help me,0
+I need help,0
+could you help,0
+may I ask,0
+I have a question,0
+let me ask,0
+sorry to bother,0
+excuse me,0
+pardon me,0
+this is a great idea,0
+great idea,0
+awesome,0
+amazing,0
+wonderful,0
+fantastic,0
+excellent,0
+brilliant,0
+perfect,0
+nice,0
+cool,0
+good job,0
+well done,0
+great job,0
+nice work,0
+good work,0
+keep it up,0
+keep going,0
+you can do it,0
+I believe in you,0
+you are amazing,0
+you are great,0
+you are awesome,0
+lets study together,0
+lets learn together,0
+I love learning,0
+I love studying,0
+learning is fun,0
+studying is important,0
+what time is it,0
+where are you,0
+I am here,0
+see you later,0
+bye bye,0
+goodbye,0
+take care,0
+see you soon,0
+talk to you later,0
+have a nice day,0
+have a good one,0
+welcome,0
+welcome back,0
+congratulations,0
+happy birthday,0
+good luck,0
+best wishes,0
+I understand,0
+I see,0
+I got it,0
+makes sense,0
+no problem,0
+its okay,0
+no worries,0
+dont worry,0
+everything is fine,0
+I agree,0
+I disagree,0
+thats correct,0
+exactly,0
+of course,0
+sure,0
+definitely,0
+absolutely,0
+maybe,0
+perhaps,0
+I think so,0
+I hope so,0
+let me know,0
+please tell me,0
+what do you think,0
+any questions,0
+I am sorry,0
+sorry,0
+my apologies,0
+please forgive me,0
+my bad,0
+I made a mistake,0
+impressive,0
+interesting,0
+thats cool,0
+sounds good,0
+sounds great,0
+lets do it,0
+ready,0
+lets go,0
+come on,0
+bring it on,0
+game on,0
+xin chào,0
+xin chào bạn,0
+chào bạn,0
+chào mọi người,0
+chào buổi sáng,0
+chào buổi chiều,0
+chào buổi tối,0
+chào nhé,0
+hôm nay trời đẹp quá,0
+bạn có thể giúp tôi không,0
+cảm ơn bạn rất nhiều,0
+chào mừng đến với lớp học,0
+bài tập này khó quá,0
+tôi thích học toán,0
+chúng ta cùng học nhé,0
+bạn học bài chưa,0
+tôi không hiểu bài này,0
+cho mình hỏi một chút,0
+bạn giỏi quá,0
+tuyệt vời,0
+làm tốt lắm,0
+cố gắng lên nhé,0
+chúc bạn may mắn,0
+bài này hay quá,0
+mình thích cách giải này,0
+bạn thật tuyệt,0
+cùng cố gắng nào,0
+bạn ơi giúp mình với,0
+cảm ơn nhiều lắm,0
+bạn tốt bụng quá,0
+mình rất vui,0
+bạn nói đúng rồi,0
+đồng ý với bạn,0
+bạn thông minh quá,0
+bạn là người tốt,0
+bạn hiền lành quá,0
+bạn sẽ thành công,0
+bình tĩnh nhé,0
+bạn khỏe không,0
+bạn học giỏi lắm,0
+bạn biết nhiều quá,0
+mấy giờ rồi,0
+bạn ở đâu,0
+tôi ở đây,0
+hẹn gặp lại,0
+tạm biệt,0
+giữ gìn sức khỏe nhé,0
+chúc một ngày tốt lành,0
+chào mừng trở lại,0
+xin chúc mừng,0
+chúc mừng sinh nhật,0
+chúc may mắn,0
+tôi hiểu rồi,0
+tôi thấy rồi,0
+không sao,0
+không có gì,0
+đừng lo,0
+mọi thứ ổn,0
+tôi đồng ý,0
+đúng vậy,0
+chính xác,0
+tất nhiên,0
+chắc chắn,0
+có lẽ,0
+tôi nghĩ vậy,0
+tôi hy vọng vậy,0
+cho tôi biết nhé,0
+hãy nói cho tôi,0
+bạn nghĩ sao,0
+có câu hỏi gì không,0
+tôi có một câu hỏi,0
+tôi có thể hỏi không,0
+xin lỗi cho hỏi,0
+xin lỗi làm phiền,0
+tôi xin lỗi,0
+xin tha lỗi cho tôi,0
+lỗi của tôi,0
+tôi đã sai,0
+làm tốt,0
+cố gắng tốt,0
+bạn đã cố gắng hết sức,0
+đừng bỏ cuộc,0
+tiếp tục đi,0
+bạn làm được,0
+tôi tin bạn,0
+bạn đang làm tốt,0
+ấn tượng,0
+thú vị,0
+tuyệt,0
+hay,0
+tốt,0
+hoàn hảo,0
+đẹp,0
+đáng yêu,0
+xinh xắn,0
+thông minh,0
+khéo léo,0
+khôn ngoan,0
+tài năng,0
+có kỹ năng,0
+chuyên nghiệp,0
+có kinh nghiệm,0
+sáng tạo,0
+chăm chỉ,0
+tận tâm,0
+có trách nhiệm,0
+trung thực,0
+chân thành,0
+trung thành,0
+kiên nhẫn,0
+thấu hiểu,0
+hỗ trợ,0
+quan tâm,0
+yêu thương,0
+thân thiện,0
+ấm áp,0
+tích cực,0
+lạc quan,0
+vui vẻ,0
+hạnh phúc,0
+hài lòng,0
+biết ơn,0
+trân trọng,0
+bạn,0
+mình,0
+tớ,0
+cậu,0
+anh,0
+chị,0
+em,0
+ông,0
+bà,0
+con,0
+cháu,0
+whats up,0
+wassup,0
+yo,0
+greetings,0
+howdy,0
+good to see you,0
+long time no see,0
+lâu rồi không gặp,0
+hows it going,0
+whats new,0
+có gì mới không,0
+everything okay,0
+mọi thứ ổn chứ,0
+are you okay,0
+bạn ổn không,0
+Im doing well,0
+tôi khỏe,0
+just fine,0
+bình thường thôi,0
+cũng được,0
+khá tốt,0
+could be better,0
+có thể tốt hơn,0
+so so,0
+tàm tạm,0
+Im okay,0
+tôi ổn,0
+doing great,0
+rất tốt,0
+chưa bao giờ tốt hơn,0
+chúc ngủ ngon,0
+ngủ ngon nhé,0
+have a good one,0
+see you soon,0
+gặp lại sớm nhé,0
+catch you later,0
+nói chuyện sau nhé,0
+stay safe,0
+giữ an toàn nhé,0
+be careful,0
+cẩn thận nhé,0
+have fun,0
+chúc vui vẻ,0
+enjoy,0
+tận hưởng nhé,0
+miss you,0
+nhớ bạn,0
+thinking of you,0
+đang nghĩ về bạn,0
+love you,0
+yêu bạn,0
+hugs,0
+ôm,0
+cheers,0
+bravo,0
+hooray,0
+yay,0
+lets start,0
+bắt đầu thôi,0
+sẵn sàng,0
+làm thôi,0
+chiến thôi,0
+vào game,0
+tôi muốn hỏi,0
+I want to ask,0
+can I say something,0
+tôi có thể nói không,0
+được không nếu,0
+would you mind,0
+bạn có phiền không,0
+could you please,0
+bạn có thể vui lòng,0
+I was wondering,0
+tôi đang thắc mắc,0
+just curious,0
+chỉ tò mò thôi,0
+by the way,0
+nhân tiện,0
+speaking of which,0
+nhắc đến,0
+anyway,0
+dù sao thì,0
+however,0
+tuy nhiên,0
+but,0
+nhưng,0
+although,0
+mặc dù,0
+even though,0
+cho dù,0
+despite,0
+bất chấp,0
+regardless,0
+bất kể,0
+in any case,0
+trong mọi trường hợp,0
+either way,0
+dù thế nào,0
+no matter what,0
+không quan trọng gì,0
+at least,0
+ít nhất,0
+at most,0
+nhiều nhất,0
+more or less,0
+ít nhiều,0
+approximately,0
+khoảng,0
+about,0
+roughly,0
+đại khái,0
+around,0
+quanh,0
+nearly,0
+gần như,0
+almost,0
+hầu như,0
+quite,0
+khá,0
+rather,0
+khá là,0
+fairly,0
+tương đối,0
+somewhat,0
+hơi,0
+a bit,0
+một chút,0
+a little,0
+một ít,0
+slightly,0
+hơi hơi,0
+very,0
+rất,0
+extremely,0
+cực kỳ,0
+incredibly,0
+không thể tin được,0
+unbelievably,0
+khó tin,0
+amazingly,0
+đáng kinh ngạc,0
+surprisingly,0
+bất ngờ,0
+unexpectedly,0
+ngoài dự kiến,0
+luckily,0
+may mắn là,0
+fortunately,0
+thật may,0
+hopefully,0
+hy vọng là,0
+sadly,0
+buồn là,0
+unfortunately,0
+thật không may,0
+regrettably,0
+đáng tiếc,0
+okay,0
+ok,0
+yes,0
+no,0
+yeah,0
+yep,0
+nope,0
+nah,0
+right,0
+wrong,0
+true,0
+false,0
+correct,0
+incorrect,0
+today,0
+tomorrow,0
+yesterday,0
+now,0
+later,0
+soon,0
+always,0
+never,0
+sometimes,0
+often,0
+usually,0
+rarely,0
+here,0
+there,0
+everywhere,0
+nowhere,0
+somewhere,0
+please,0
+thanks again,0
+thank you again,0
+đồ ngu,1
+mày ngu quá,1
+mày ngu vãi,1
+đồ khốn nạn,1
+thằng chó,1
+con chó mày,1
+đồ điên,1
+ngu như bò,1
+đồ rác rưởi,1
+thằng ngốc,1
+đồ đần độn,1
+mày là đồ vô dụng,1
+thằng ngu si,1
+đồ khùng,1
+mày bị điên à,1
+cút đi,1
+biến đi,1
+đồ hèn,1
+thằng hèn nhát,1
+mày là thằng đần,1
+tao ghét mày,1
+đồ phản bội,1
+mày chết đi,1
+stupid idiot,1
+you are dumb,1
+go to hell,1
+shut up fool,1
+you suck,1
+what a loser,1
+you are trash,1
+piece of garbage,1
+moron,1
+dumbass,1
+you are worthless,1
+pathetic loser,1
+screw you,1
+get lost idiot,1
+you disgust me,1
+thằng điên khùng,1
+đồ ngu xuẩn,1
+mày bị khùng à,1
+câm mồm đi,1
+im miệng đi,1
+đồ vô học,1
+thằng mất dạy,1
+đồ bất tài,1
+mày làm cái gì vậy đồ ngu,1
+tao chửi mày đó,1
+đồ ăn hại,1
+thằng phế vật,1
+damn you,1
+you are an idiot,1
+bloody fool,1
+stupid moron,1
+get the hell out,1
+you are useless idiot,1
+nobody likes you loser,1
+you are nothing,1
+mày là thằng ngu nhất,1
+đồ đần độn vô dụng,1
+cút ngay khỏi đây,1
+mày không xứng đáng,1
+đồ rẻ tiền,1
+scum of the earth,1
+you are disgusting person,1
+worst person ever,1
+mày xấu xí quá,1
+đồ quái vật,1
+ugly freak,1
+you look terrible idiot,1
+tào lao vớ vẩn,1
+bullshit nonsense,1
+mày nói láo,1
+thằng dối trá,1
+đồ lừa đảo,1
+đồ xạo,1
+thằng đầu đất,1
+mày đần lắm,1
+óc chó,1
+não cá vàng,1
+brainless idiot,1
+empty head fool,1
+you have no brain,1
+đồ súc sinh,1
+như con vật,1
+đồ chó đẻ,1
+con hoang đồ,1
+bastard loser,1
+son of a bitch,1
+đồ thất bại,1
+loser mày,1
+failure idiot,1
+you always fail loser,1
+thằng rác,1
+đồ bỏ đi,1
+garbage person,1
+waste of space,1
+ghê tởm quá,1
+kinh tởm quá,1
+disgusting person,1
+gross disgusting,1
+tởm lợm quá,1
+thối nát quá,1
+rotten person,1
+corrupt scum,1
+chết tiệt mày,1
+đồ quỷ,1
+damn it all,1
+hell no get out,1
+thằng hâm,1
+điên à mày,1
+crazy fool idiot,1
+lunatic freak,1
+đồ lưu manh,1
+thằng côn đồ,1
+thug criminal,1
+criminal scum,1
+đồ ba trợn,1
+thằng vô lại,1
+scoundrel villain,1
+villain scum,1
+đồ phá hoại,1
+thằng phá đám,1
+destroyer scum,1
+saboteur idiot,1
+câm miệng mày lại,1
+shut your mouth idiot,1
+zip it fool,1
+đồ mắc dịch,1
+đồ bệnh hoạn,1
+sick person freak,1
+diseased freak,1
+mày học dốt vãi,1
+you suck at studying idiot,1
+terrible student loser,1
+mày không biết gì cả,1
+you know nothing idiot,1
+ignorant fool idiot,1
+đồ ngu ngốc vô dụng,1
+mày là đồ rác rưởi,1
+thằng khốn nạn,1
+đồ chết tiệt mày,1
+mày đáng chết,1
+đồ vô liêm sỉ,1
+thằng mặt dày,1
+đồ trơ trẽn,1
+mày thật đáng khinh,1
+đồ hạ đẳng,1
+thằng thấp kém,1
+mày không ra gì,1
+đồ tồi tệ,1
+thằng xấu xa,1
+mày ác độc,1
+đồ độc ác,1
+thằng tàn nhẫn,1
+mày vô nhân đạo,1
+đồ man rợ,1
+thằng dã man,1
+fuck you,1
+fuck off,1
+fucking idiot,1
+fucking moron,1
+fucking loser,1
+shit head,1
+bullshit crap,1
+asshole jerk,1
+ass hole,1
+bitch ass,1
+dick head,1
+dickhead loser,1
+douchebag idiot,1
+jerk face,1
+prick head,1
+bastard jerk,1
+crap head,1
+damn fool,1
+wtf idiot,1
+stfu idiot,1
+sucker loser,1
+retard idiot,1
+retarded fool,1
+psycho freak,1
+freak show,1
+weirdo freak,1
+creep freak,1
+sicko pervert,1
+pervert creep,1
+đụ má,1
+địt mẹ,1
+đéo mày,1
+đù má,1
+đm mày,1
+vcl mày,1
+vkl mày,1
+clm mày,1
+dcm mày,1
+đcm mày,1
+cc mày,1
+cặc mày,1
+lồn mày,1
+buồi mày,1
+dái mày,1
+đĩ thối,1
+cave rẻ tiền,1
+điếm thúi,1
+chó chết mày,1
+thằng chó chết,1
+đồ chó má,1
+mẹ mày chết,1
+con mẹ mày,1
+bố mày chết,1
+cha mày chết,1
+tổ sư mày,1
+ông nội mày,1
+bà nội mày,1
+mày là con chó,1
+đồ chó ngáo,1
+thằng chó điên,1
+mày ngu như lợn,1
+đồ lợn,1
+thằng heo,1
+mày béo như heo,1
+đồ mập ú,1
+thằng béo,1
+mày gầy như que,1
+đồ gầy còm,1
+thằng còi,1
+mày lùn quá,1
+đồ lùn tịt,1
+thằng lùn,1
+mày cao nghều,1
+đồ sào,1
+thằng cao kều,1
+mày xấu như ma,1
+đồ xấu xí,1
+thằng mặt quỷ,1
+mày đen như than,1
+đồ đen thui,1
+thằng đen,1
+mày trắng bệch,1
+đồ ma cà rồng,1
+thằng bạch tạng,1
+đồ ngu như chó,1
+mày dốt như bò,1
+thằng dốt nát,1
+mày học dốt quá,1
+đồ học ngu,1
+thằng đần độn nhất,1
+mày vô dụng quá,1
+đồ vô tích sự,1
+thằng ăn hại,1
+mày là rác,1
+đồ rác rến,1
+thằng bỏ đi,1
+mày không có giá trị,1
+đồ vô giá trị,1
+thằng thừa,1
+shut the fuck up,1
+go fuck yourself,1
+fucking asshole,1
+piece of shit,1
+son of bitch,1
+mother fucker,1
+dumb fuck,1
+stupid fuck,1
+fucking hell,1
+what the fuck,1
+you fucking idiot,1
+fucking moron idiot,1
+stupid ass,1
+dumb shit,1
+bullshit artist,1
+lying piece of shit,1
+worthless piece of crap,1
+pathetic excuse,1
+total loser,1
+complete idiot,1
+utter moron,1
+absolute fool,1
+total failure,1
+complete waste,1
+utter garbage,1
+absolute trash,1
+biggest loser ever,1
+worst human ever,1
+most pathetic person,1
+most disgusting person,1
+hate you so much,1
+I hate you,1
+die already,1
+go die,1
+kill yourself,1
+kys loser,1
+you deserve to die,1
+you should die,1
+nobody wants you,1
+everyone hates you,1
+no one likes you,1
+you have no friends,1
+lonely loser,1
+forever alone loser,1
+no life loser,1
+get a life loser,1
+you are pathetic,1
+you are hopeless,1
+give up already,1
+you will never succeed,1
+you will always fail,1
+you are a disappointment,1
+such a disappointment,1
+waste of oxygen,1
+waste of life,1
+mày chết đi cho rồi,1
+mày tự tử đi,1
+không ai thương mày,1
+mày cô đơn suốt đời,1
+mày không có bạn,1
+ai mà thèm chơi với mày,1
+mày là kẻ thất bại,1
+mày sẽ không bao giờ thành công,1
+mày là nỗi thất vọng,1
+mày làm cha mẹ thất vọng,1
+mày xấu hổ đi,1
+mày nhục nhã quá,1
+mày đáng xấu hổ,1
+mày không có giáo dục,1
+mày vô văn hóa,1
+mày là đồ mọi rợ,1
+mày thiếu giáo dục,1
+mày không có não,1
+mày không biết suy nghĩ,1
+đầu óc mày có vấn đề,1
+mày bị tâm thần à,1
+mày điên rồi,1
+mày bị bệnh,1
+mày có bệnh,1
+mày bị khùng rồi,1
+what are you doing,0
+where is everyone,0
+when does it start,0
+why is that,0
+who is there,0
+which one,0
+whose is this,0
+how does it work,0
+what happened,0
+where did you go,0
+when will you come,0
+why did you do that,0
+who said that,0
+which way,0
+whose idea was this,0
+how did you do that,0
+I dont know,0
+I dont understand,0
+I cant believe it,0
+I cant wait,0
+I wont forget,0
+I didnt mean to,0
+I wasnt sure,0
+I havent seen it,0
+I shouldnt have,0
+I couldnt help it,0
+I wouldnt do that,0
+lets see,0
+lets try,0
+lets think,0
+lets wait,0
+lets discuss,0
+lets plan,0
+lets decide,0
+lets celebrate,0
+lets eat,0
+lets drink,0
+lets play,0
+lets work,0
+lets rest,0
+lets sleep,0
+I think its good,0
+I think we should,0
+I think that works,0
+I think youre right,0
+I think its possible,0
+I believe so,0
+I believe we can,0
+I believe its true,0
+I believe in us,0
+I feel good,0
+I feel better,0
+I feel happy,0
+I feel excited,0
+I feel grateful,0

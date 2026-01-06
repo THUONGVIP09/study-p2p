@@ -41,6 +41,42 @@ METADATA_PATH = os.path.join(BASE_DIR, 'models', 'model_metadata.json')
 model = None
 metadata = None
 
+# Ngưỡng confidence - chỉ chặn khi confidence >= 75%
+TOXIC_CONFIDENCE_THRESHOLD = 0.75
+
+# Whitelist - các từ/cụm từ phổ biến KHÔNG BAO GIỜ là toxic
+WHITELIST_WORDS = {
+    # English greetings
+    'hello', 'hi', 'hey', 'yo', 'sup', 'howdy', 'greetings',
+    'good morning', 'good afternoon', 'good evening', 'good night',
+    'morning', 'afternoon', 'evening', 'night',
+    # Common words
+    'yes', 'no', 'ok', 'okay', 'sure', 'thanks', 'thank you', 'please',
+    'sorry', 'excuse me', 'welcome', 'bye', 'goodbye', 'see you',
+    'how are you', 'fine', 'good', 'great', 'nice', 'cool', 'awesome',
+    # Vietnamese greetings
+    'xin chào', 'chào', 'chào bạn', 'chào mọi người',
+    'cảm ơn', 'cám ơn', 'xin lỗi', 'không sao', 'được',
+    'tốt', 'hay', 'tuyệt', 'đẹp', 'xinh', 'giỏi',
+    # Single letters/numbers (prevent false positives)
+    'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm',
+    'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z',
+    '1', '2', '3', '4', '5', '6', '7', '8', '9', '0',
+}
+
+
+def is_whitelisted(text):
+    """Kiểm tra xem text có nằm trong whitelist không"""
+    text_lower = text.lower().strip()
+    # Exact match
+    if text_lower in WHITELIST_WORDS:
+        return True
+    # Check if text is just a greeting with punctuation
+    text_clean = ''.join(c for c in text_lower if c.isalnum() or c.isspace())
+    if text_clean in WHITELIST_WORDS:
+        return True
+    return False
+
 
 def load_model():
     """Load model từ file pickle"""
@@ -84,23 +120,39 @@ def predict_toxic(text):
     # Tiền xử lý
     text_clean = str(text).lower().strip()
     
+    # Kiểm tra whitelist trước
+    if is_whitelisted(text_clean):
+        return {
+            'text': text,
+            'is_toxic': False,
+            'confidence': 0.0,
+            'label': 'non-toxic',
+            'reason': 'whitelisted'
+        }
+    
     # Predict
     prediction = model.predict([text_clean])[0]
     
     # Lấy confidence nếu có
     try:
         probabilities = model.predict_proba([text_clean])[0]
+        # Lấy probability của class toxic (label=1)
+        toxic_prob = float(probabilities[1])
         confidence = float(probabilities[prediction])
     except:
+        toxic_prob = 1.0 if prediction == 1 else 0.0
         confidence = 1.0  # SVM không có predict_proba
     
-    is_toxic = bool(prediction == 1)
+    # Áp dụng ngưỡng confidence
+    # Chỉ đánh dấu là toxic nếu probability >= threshold
+    is_toxic = toxic_prob >= TOXIC_CONFIDENCE_THRESHOLD
     
     return {
         'text': text,
         'is_toxic': is_toxic,
-        'confidence': confidence,
-        'label': 'toxic' if is_toxic else 'non-toxic'
+        'confidence': toxic_prob,  # Trả về toxic probability thay vì confidence
+        'label': 'toxic' if is_toxic else 'non-toxic',
+        'threshold': TOXIC_CONFIDENCE_THRESHOLD
     }
 
 

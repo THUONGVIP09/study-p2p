@@ -45,6 +45,8 @@ class ToxicFilterService {
           isToxic: data['is_toxic'] ?? false,
           confidence: (data['confidence'] ?? 0.0).toDouble(),
           label: data['label'] ?? 'unknown',
+          threshold: (data['threshold'] ?? 0.75).toDouble(),
+          isWhitelisted: data['reason'] == 'whitelisted',
           error: null,
         );
       } else {
@@ -112,6 +114,8 @@ class ToxicFilterResult {
   final bool isToxic;
   final double confidence;
   final String label;
+  final double threshold;
+  final bool isWhitelisted;
   final String? error;
   
   ToxicFilterResult({
@@ -119,6 +123,8 @@ class ToxicFilterResult {
     required this.isToxic,
     required this.confidence,
     required this.label,
+    this.threshold = 0.75,
+    this.isWhitelisted = false,
     this.error,
   });
   
@@ -129,6 +135,8 @@ class ToxicFilterResult {
       isToxic: false, // Fail-open: nếu lỗi thì cho qua
       confidence: 0.0,
       label: 'error',
+      threshold: 0.75,
+      isWhitelisted: false,
       error: error,
     );
   }
@@ -139,11 +147,17 @@ class ToxicFilterResult {
   /// Confidence dạng phần trăm
   String get confidencePercent => '${(confidence * 100).toStringAsFixed(1)}%';
   
+  /// Threshold dạng phần trăm
+  String get thresholdPercent => '${(threshold * 100).toStringAsFixed(0)}%';
+  
   @override
   String toString() {
     if (hasError) {
       return 'ToxicFilterResult(error: $error)';
     }
-    return 'ToxicFilterResult(isToxic: $isToxic, confidence: $confidencePercent)';
+    if (isWhitelisted) {
+      return 'ToxicFilterResult(whitelisted - safe)';
+    }
+    return 'ToxicFilterResult(isToxic: $isToxic, confidence: $confidencePercent, threshold: $thresholdPercent)';
   }
 }
