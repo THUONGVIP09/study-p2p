@@ -3,8 +3,9 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'dart:async';
 import '../../services/hybrid_chat_service.dart';
 import '../../services/p2p_chat_service.dart';
-import '../../services/web_chat_service.dart';
+import '../../services/global_chat_service.dart';
 import '../../services/friend_chat_storage_service.dart';
+import '../../services/unread_messages_service.dart';
 import '../../services/network_helper.dart';
 import '../../config/app_config.dart';
 import '../../widgets/emoji_picker_button.dart';
@@ -30,9 +31,6 @@ class _HybridChatScreenState extends State<HybridChatScreen> {
   P2PChatService? _p2p;
   HybridChatService? _hybrid;
   
-  // For web platform
-  WebChatService? _webChat;
-  
   final TextEditingController _msgCtrl = TextEditingController();
   final ScrollController _scroll = ScrollController();
   final List<Map<String, dynamic>> _messages = [];
@@ -44,7 +42,15 @@ class _HybridChatScreenState extends State<HybridChatScreen> {
   @override
   void initState() {
     super.initState();
+    _markAsRead();
     _bootstrap();
+  }
+  
+  /// Đánh dấu tin nhắn từ friend này là đã đọc
+  Future<void> _markAsRead() async {
+    // Đảm bảo UnreadMessagesService đã được khởi tạo với đúng userId
+    await UnreadMessagesService.initialize(widget.currentUserId);
+    await UnreadMessagesService.markAsRead(widget.friendId);
   }
 
   Future<void> _bootstrap() async {
@@ -61,18 +67,19 @@ class _HybridChatScreenState extends State<HybridChatScreen> {
       AppConfig.printConfig();
 
       if (kIsWeb) {
-        // WEB PLATFORM: Use WebSocket relay only (no raw sockets)
-        print('🌐 [UI] Web platform detected - using WebSocket relay');
-        _webChat = WebChatService(currentUserId: widget.currentUserId);
-        await _webChat!.start();
+        // WEB PLATFORM: Use GlobalChatService (singleton - no new connection)
+        print('🌐 [UI] Web platform detected - using GlobalChatService');
+        
+        // Ensure GlobalChatService is connected
+        await GlobalChatService.instance.connect(widget.currentUserId);
         
         setState(() {
           _status = 'Via Server (Web)';
         });
-        print('✅ [UI] Web chat connected via relay');
+        print('✅ [UI] Using GlobalChatService for web');
 
-        // Setup stream listener for web
-        _sub = _webChat!.stream.listen((e) {
+        // Setup stream listener for web - listen to global chat service
+        _sub = GlobalChatService.instance.stream.listen((e) {
           if (e['friendId'] != widget.friendId) {
             return;
           }
@@ -81,16 +88,23 @@ class _HybridChatScreenState extends State<HybridChatScreen> {
             'content': e['content'],
             'timestamp': e['timestamp'] ?? DateTime.now().toIso8601String(),
           };
-          setState(() {
-            _messages.add(msg);
-          });
-          // Save received message to storage
-          FriendChatStorageService.addMessage(
-            widget.currentUserId,
-            widget.friendId,
-            msg,
+          // Check for duplicate before adding
+          final isDuplicate = _messages.any((m) => 
+            m['content'] == msg['content'] && 
+            m['timestamp'] == msg['timestamp']
           );
-          _scrollToBottom();
+          if (!isDuplicate) {
+            setState(() {
+              _messages.add(msg);
+            });
+            // Save received message to storage
+            FriendChatStorageService.addMessage(
+              widget.currentUserId,
+              widget.friendId,
+              msg,
+            );
+            _scrollToBottom();
+          }
         });
       } else {
         // NON-WEB PLATFORM: Use P2P + Hybrid service
@@ -207,14 +221,9 @@ class _HybridChatScreenState extends State<HybridChatScreen> {
     _msgCtrl.dispose();
     _scroll.dispose();
 
-    // Dispose appropriate service based on platform
-    if (kIsWeb) {
-      _webChat?.dispose().then((_) {
-        print('✅ [UI] WebChatService disposed');
-      }).catchError((e) {
-        print('❌ [UI] Error disposing WebChatService: $e');
-      });
-    } else {
+    // Only dispose HybridChatService for non-web platforms
+    // GlobalChatService is a singleton and should not be disposed here
+    if (!kIsWeb) {
       _hybrid?.dispose().then((_) {
         print('✅ [UI] HybridChatService disposed after pending saves');
       }).catchError((e) {
@@ -246,7 +255,8 @@ class _HybridChatScreenState extends State<HybridChatScreen> {
       // Send via appropriate service based on platform
       bool success = false;
       if (kIsWeb) {
-        success = await _webChat?.sendToFriend(widget.friendId, text) ?? false;
+        // Use GlobalChatService for web
+        success = await GlobalChatService.instance.sendToFriend(widget.friendId, text);
       } else {
         await _hybrid?.sendToFriend(widget.friendId, text);
         success = true;

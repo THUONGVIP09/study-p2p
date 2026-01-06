@@ -52,11 +52,35 @@ public class ChatRelayEndpoint {
 
         Session target = sessions.get(toId);
         if (target != null && target.isOpen()) {
-            target.getBasicRemote().sendText(message);
+            // Ensure the 'from' field is present in the forwarded message
+            String forwardMessage = ensureFromField(message, userId);
+            target.getBasicRemote().sendText(forwardMessage);
+            System.out.println("✅ [Relay] Forwarded to user " + toId);
+        } else {
+            System.out.println("⚠️ [Relay] User " + toId + " not connected, message not delivered");
+            // TODO: Store offline messages for later delivery
         }
 
         // Heartbeat to keep user online
         PeerRegistry.get().heartbeat(userId);
+    }
+
+    /**
+     * Ensure the message contains the 'from' field with sender's userId
+     */
+    private String ensureFromField(String json, long fromUserId) {
+        // Check if 'from' field already exists
+        if (json.contains("\"from\"")) {
+            return json;
+        }
+
+        // Add 'from' field to the JSON
+        // Find the first '{' and insert after it
+        int braceIdx = json.indexOf('{');
+        if (braceIdx >= 0) {
+            return json.substring(0, braceIdx + 1) + "\"from\":" + fromUserId + "," + json.substring(braceIdx + 1);
+        }
+        return json;
     }
 
     private Long extractLong(String json, String key) {

@@ -4,6 +4,9 @@ import 'package:web_socket_channel/web_socket_channel.dart';
 import 'dart:convert';
 import 'dart:async';
 import '../../services/friends_service.dart';
+import '../../services/unread_messages_service.dart';
+import '../../services/friend_chat_storage_service.dart';
+import '../../services/global_chat_service.dart';
 import '../chat/hybrid_chat_screen.dart';
 import '../../config/app_config.dart';
 
@@ -25,16 +28,22 @@ class _FriendsTabState extends State<FriendsTab> {
   WebSocketChannel? _onlineListChannel;
   StreamSubscription? _onlineListSub;
   
-  // Chat relay connection to register self as online
-  WebSocketChannel? _chatRelayChannel;
+  // Use global chat service for relay connection
+  StreamSubscription? _chatMessageSub;
   int? _currentUserId;
-  Timer? _heartbeatTimer;
   Timer? _refreshOnlineListTimer;
+  
+  // Unread message counts per friend
+  Map<int, int> _unreadCounts = {};
   @override
   void initState() {
     super.initState();
     _loadFriends();
     _initializeOnlineStatus();
+    _loadUnreadCounts();
+    
+    // Listen to unread count changes
+    UnreadMessagesService.addListener(_onUnreadCountsChanged);
   }
 
   /// Initialize online status: first register self, then subscribe to updates
@@ -67,39 +76,25 @@ class _FriendsTabState extends State<FriendsTab> {
         debugPrint('⚠️ No userId found, cannot register as online');
         return;
       }
+      
+      // Initialize UnreadMessagesService với userId để tránh xung đột file
+      await UnreadMessagesService.initialize(_currentUserId!);
 
-      // Connect to chat-relay to register as online
-      final relayUrl = AppConfig.chatRelayUrl(_currentUserId!);
-      debugPrint('🔌 Connecting to chat-relay to register as online: $relayUrl');
+      // Connect to global chat service (singleton - shared across app)
+      await GlobalChatService.instance.connect(_currentUserId!);
+      debugPrint('🔌 Connected to GlobalChatService for user $_currentUserId');
       
-      _chatRelayChannel = WebSocketChannel.connect(Uri.parse(relayUrl));
-      
-      // Listen for any incoming messages (in case someone sends a message)
-      _chatRelayChannel!.stream.listen(
-        (data) {
-          debugPrint('📨 [FriendsTab] Received relay message: $data');
+      // Listen for incoming messages from global chat service
+      _chatMessageSub?.cancel();
+      _chatMessageSub = GlobalChatService.instance.stream.listen(
+        (msg) {
+          debugPrint('📨 [FriendsTab] Received from GlobalChat: $msg');
+          _handleIncomingChatMessage(msg);
         },
         onError: (error) {
-          debugPrint('❌ Chat relay error: $error');
-        },
-        onDone: () {
-          debugPrint('🔌 Chat relay disconnected');
+          debugPrint('❌ GlobalChat stream error: $error');
         },
       );
-
-      // Start heartbeat to stay online
-      _heartbeatTimer = Timer.periodic(const Duration(seconds: 30), (_) {
-        if (_chatRelayChannel != null) {
-          try {
-            _chatRelayChannel!.sink.add(jsonEncode({
-              'type': 'heartbeat',
-              'from': _currentUserId,
-            }));
-          } catch (e) {
-            debugPrint('❌ Heartbeat failed: $e');
-          }
-        }
-      });
 
       debugPrint('✅ Registered as online (userId: $_currentUserId)');
     } catch (e) {
@@ -168,6 +163,69 @@ class _FriendsTabState extends State<FriendsTab> {
     _onlineListSub?.cancel();
     _onlineListChannel?.sink.close();
     _subscribeToOnlineList();
+  }
+
+  /// Load số tin nhắn chưa đọc
+  Future<void> _loadUnreadCounts() async {
+    final counts = await UnreadMessagesService.getUnreadCounts();
+    if (mounted) {
+      setState(() {
+        _unreadCounts = counts;
+      });
+    }
+  }
+  
+  /// Callback khi số tin nhắn chưa đọc thay đổi
+  void _onUnreadCountsChanged(Map<int, int> counts) {
+    if (mounted) {
+      setState(() {
+        _unreadCounts = counts;
+      });
+    }
+  }
+  
+  /// Xử lý tin nhắn đến từ GlobalChatService
+  /// Format: {friendId: int, sender: 'peer', content: String, timestamp: String}
+  void _handleIncomingChatMessage(Map<String, dynamic> msg) async {
+    try {
+      debugPrint('🔍 [FriendsTab] Processing chat message: $msg');
+      
+      final fromUserId = msg['friendId'] as int?;
+      final content = msg['content'] as String?;
+      final timestamp = msg['timestamp'] as String? ?? DateTime.now().toIso8601String();
+      
+      // Skip if not a valid chat message
+      if (fromUserId == null || content == null) {
+        debugPrint('⚠️ [FriendsTab] Skipping - invalid message format');
+        return;
+      }
+      
+      debugPrint('📩 [FriendsTab] New message from user $fromUserId: $content');
+      
+      // Lưu vào unread messages
+      await UnreadMessagesService.addUnreadMessage(
+        friendId: fromUserId,
+        senderName: 'Friend $fromUserId',
+        content: content,
+        timestamp: timestamp,
+      );
+      
+      // Lưu vào lịch sử chat
+      if (_currentUserId != null) {
+        await FriendChatStorageService.addMessage(
+          _currentUserId!,
+          fromUserId,
+          {
+            'sender': 'peer',
+            'content': content,
+            'timestamp': timestamp,
+          },
+        );
+        debugPrint('✅ [FriendsTab] Saved message to storage');
+      }
+    } catch (e) {
+      debugPrint('❌ Error handling incoming message: $e');
+    }
   }
 
   Future<void> _loadFriends({String query = ''}) async {
@@ -258,6 +316,7 @@ class _FriendsTabState extends State<FriendsTab> {
                 final user = filteredFriends[index];
                 final userId = user['id'] as int;
                 final isOnline = _onlineStatus[userId] ?? false;
+                final unreadCount = _unreadCounts[userId] ?? 0;
 
                 return Card(
                   margin:
@@ -266,8 +325,9 @@ class _FriendsTabState extends State<FriendsTab> {
                     padding: const EdgeInsets.all(8.0),
                     child: Row(
                       children: [
-                        // Avatar with online indicator
+                        // Avatar with online indicator and unread badge
                         Stack(
+                          clipBehavior: Clip.none,
                           children: [
                             CircleAvatar(
                               child: Text(
@@ -291,6 +351,36 @@ class _FriendsTabState extends State<FriendsTab> {
                                 ),
                               ),
                             ),
+                            // Unread message badge (chấm đỏ với số)
+                            if (unreadCount > 0)
+                              Positioned(
+                                right: -6,
+                                top: -6,
+                                child: Container(
+                                  padding: const EdgeInsets.all(4),
+                                  constraints: const BoxConstraints(
+                                    minWidth: 20,
+                                    minHeight: 20,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Colors.red,
+                                    shape: BoxShape.circle,
+                                    border: Border.all(
+                                      color: Colors.white,
+                                      width: 2,
+                                    ),
+                                  ),
+                                  child: Text(
+                                    unreadCount > 99 ? '99+' : unreadCount.toString(),
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                ),
+                              ),
                           ],
                         ),
                         const SizedBox(width: 12),
@@ -424,6 +514,9 @@ class _FriendsTabState extends State<FriendsTab> {
                               final prefs =
                                   await SharedPreferences.getInstance();
                               final currentUserId = prefs.getInt('userId') ?? 1;
+                              
+                              // Clear unread messages for this friend
+                              await UnreadMessagesService.markAsRead(userId);
 
                               // Navigate directly to chat (uses AppConfig server IP)
                               if (!mounted) return;
@@ -468,12 +561,13 @@ class _FriendsTabState extends State<FriendsTab> {
 
   @override
   void dispose() {
-    _heartbeatTimer?.cancel();
     _refreshOnlineListTimer?.cancel();
     _onlineListSub?.cancel();
-    _chatRelayChannel?.sink.close();
+    _chatMessageSub?.cancel();
     _onlineListChannel?.sink.close();
     searchCtrl.dispose();
+    UnreadMessagesService.removeListener(_onUnreadCountsChanged);
+    // Don't disconnect GlobalChatService here - it's a singleton
     super.dispose();
   }
 }

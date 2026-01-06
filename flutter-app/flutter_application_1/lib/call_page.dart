@@ -607,8 +607,21 @@ class _P2PCallPageState extends State<P2PCallPage> {
   void _handleIncomingChat(
       int senderId, String senderName, String text, DateTime ts,
       {int? messageId}) {
+    // Kiểm tra duplicate
+    final msgId = '${ts.microsecondsSinceEpoch}';
+    final isDuplicate = _messages.any((m) => 
+      m.id == msgId || 
+      (m.senderId == senderId && m.text == text && 
+       m.timestamp.difference(ts).inSeconds.abs() < 2)
+    );
+    
+    if (isDuplicate) {
+      debugPrint('⚠️ Duplicate message detected, skipping');
+      return;
+    }
+    
     final msg = ChatMessage(
-      id: '${ts.microsecondsSinceEpoch}',
+      id: msgId,
       senderId: senderId,
       senderName: senderName,
       text: text,
@@ -620,6 +633,18 @@ class _P2PCallPageState extends State<P2PCallPage> {
       _messages.add(msg);
     });
     _scrollChatToBottom();
+    
+    // Lưu tin nhắn của người khác vào local storage
+    if (senderId != widget.currentUserId) {
+      LocalMessageStorage.saveMessage(
+        roomCode: widget.room.roomCode,
+        senderId: senderId,
+        senderName: senderName,
+        text: text,
+        timestamp: ts,
+        synced: false,
+      );
+    }
   }
 
   void _sendChatSignal(String text) {
@@ -738,6 +763,9 @@ class _P2PCallPageState extends State<P2PCallPage> {
 
   Future<void> _initAll() async {
     await _localRenderer.initialize();
+    
+    // Load tin nhắn đã lưu từ local storage
+    await _loadSavedMessages();
 
     // Khởi tạo P2P Chat
     if (kIsWeb) {
@@ -752,6 +780,41 @@ class _P2PCallPageState extends State<P2PCallPage> {
 
     // Sau đó connect WS
     await _connectWs();
+  }
+  
+  /// Load tin nhắn đã lưu từ local storage
+  Future<void> _loadSavedMessages() async {
+    try {
+      final savedMessages = await LocalMessageStorage.getMessages(widget.room.roomCode);
+      if (savedMessages.isNotEmpty) {
+        debugPrint('📖 Loading ${savedMessages.length} saved messages');
+        final loadedMessages = savedMessages.map((m) {
+          return ChatMessage(
+            id: m['id'] ?? '',
+            senderId: m['senderId'] ?? 0,
+            senderName: m['senderName'] ?? 'Unknown',
+            text: m['text'] ?? '',
+            timestamp: DateTime.tryParse(m['timestamp'] ?? '') ?? DateTime.now(),
+            isSelf: m['senderId'] == widget.currentUserId,
+          );
+        }).toList();
+        
+        // Sort by timestamp
+        loadedMessages.sort((a, b) => a.timestamp.compareTo(b.timestamp));
+        
+        setState(() {
+          _messages.clear();
+          _messages.addAll(loadedMessages);
+        });
+        
+        // Scroll to bottom
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _scrollChatToBottom();
+        });
+      }
+    } catch (e) {
+      debugPrint('❌ Error loading saved messages: $e');
+    }
   }
 
   /// Initialize WebRTC P2P Chat for web (pure P2P)
